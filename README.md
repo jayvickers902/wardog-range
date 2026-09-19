@@ -112,3 +112,17 @@ hostname. To hand the name back to Vercel -- always-on, global, no local
 dependency -- delete the `wardogs.dudgy.net` CNAME record in the Cloudflare
 dashboard. The `*.dudgy.net` wildcard then resolves to Vercel again and the
 existing alias takes over. The tunnel and `serve.py` can then be stopped.
+
+**Do not do that yet.** Vercel Deployment Protection is switched on for this
+project, and it gates the production custom domain, not just the `*.vercel.app`
+URLs. Verified 2026-09-19 by hitting the Vercel edge directly with the real Host
+header:
+
+    curl -sI --resolve wardogs.dudgy.net:443:76.76.21.21 https://wardogs.dudgy.net/
+    HTTP/1.1 302 Found
+    Location: https://vercel.com/sso-api?url=https%3A%2F%2Fwardogs.dudgy.net%2F
+
+So deleting the CNAME today would hand the hostname to Vercel and immediately
+break it for everyone not logged into the Vercel account. Turn protection off
+first (Vercel dashboard -> project -> Settings -> Deployment Protection), confirm
+that curl returns 200, then move the DNS.
