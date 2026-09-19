@@ -139,6 +139,52 @@ on quartiles it lands at 32.7, with Ozeti at 23.9 and Zestafona at 25.5.
 Only the shipped renders are treated. A player's own screenshot of the in-game
 map has the treatment already.
 
+## Bakurani partly checked, 19 September 2026
+
+A second in-game overview was supplied, of a different map. Correlating a
+central block of it against each raster identified it outright: Bakurani at
+SNR 26.6, against 3.3 for Ozeti and 3.4 for Zestafona.
+
+Registering it on a 3x3 grid of ~4.4 km tiles matched all nine, SNR 15.8 to
+33.9, with an east/north spread of **12 m**. A raster cropped or scaled
+differently would drift systematically across those tiles by far more, so
+**scale and orientation are confirmed**. The east offsets do trend from +94 m
+in the west column to +122 m in the east, and the north from +7 m at the top
+to -22 m at the bottom; both are about 0.3% over the map, which is under one
+capture pixel per tile and is not a scale error worth acting on.
+
+Translation is weaker than for Ozeti, and deliberately recorded as such. That
+capture prints kilometre labels along the **top edge only**:
+
+- The east anchor comes from text-glyph centroids rather than tick marks. It
+  lands at +106 m, which is about 7 screen pixels. Map labels are usually drawn
+  slightly to the right of the line they name -- this repo's own board offsets
+  them by 3 px -- so a bias of that size and sign is expected from the reading
+  method, not from the raster.
+- The north anchor could **not** be measured. There is no left-hand axis in the
+  capture, so the vertical placement was fitted by correlation and the north
+  residual is not an independent result. Only its spread is.
+
+`MAP_DEFS.bakurani` therefore carries `calibration: "partial"` with a 110 m
+figure, and the board says "scale and orientation checked in game; placement to
+~110 m" rather than claiming alignment. A capture showing both axes would
+finish it. Its playable bounds are still unmeasured: no boundary box was
+visible in this capture.
+
+## What a close capture cannot do
+
+A zoomed-in capture of the SPH-2 spawn was also supplied, at roughly 2 to 3 m
+per pixel over about 2 km of ground. Searching the whole raster across eight
+assumed scales produced peaks of SNR 7.7 to 9.2 that landed in four different
+places, moving by tens of kilometres between neighbouring scales. That is
+noise, not a match, and none of it was used.
+
+This is the same limit recorded above: the renders hold 6.4 m per pixel, so a
+capture zoomed past roughly 1 km of visible ground has no features left that
+the raster also contains. Control points have to come from a wide view. The
+coordinate readout on such a capture is still exact -- it is only the imagery
+that cannot be matched.
+
 ### What this does not cover
 
 - **Bakurani and Zestafona remain unverified.** The three rasters were reduced

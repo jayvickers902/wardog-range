@@ -138,10 +138,26 @@ nine independent tiles, with no detectable scale or rotation error. The board
 draws its playable boundary -- which is not the edge of the terrain, and is
 smaller -- and the footer says the map is aligned.
 
-**Bakurani and Zestafona are not.** The three renders were reduced from
-separate sources, so Ozeti's result does not carry over to them. They still say
-`alignment not yet verified in game` under the board, and they do not draw a
-playable boundary, because theirs has not been measured against these files.
+**Bakurani is partly checked.** A second overview identified it outright and
+confirmed its scale and orientation -- nine tiles, 12 m spread -- but that
+capture carries kilometre labels on one axis only, so its placement is good to
+about 110 m east and its north anchor was fitted rather than measured. The
+board says exactly that instead of claiming alignment.
+
+**Zestafona is not checked at all**, and still says so. The three renders came
+from separate sources, so one map's result never carries over to another.
+Neither of these two draws a playable boundary, because theirs has not been
+measured.
+
+### Reading coordinates off the game
+
+On the in-game map the **y** value is printed above the marked point and the
+**x** value to its right, so reading down the screen hands them to you in the
+opposite order to the one you type. `x85.91, y72.59` and `x72.59, y85.91` are
+both real places -- on Bakurani they are 1,889 m apart -- so no amount of
+validation here can catch a transposition. Paste the chat line rather than
+retyping it and the labels come with it; the From and To boxes read `x` and `y`
+in either order.
 
 `docs/MAP-REFERENCE-REVIEW.md` has the method, the residuals and the limits.
 Whatever the footer says, 6.4 m per source pixel cannot show you a building --

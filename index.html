@@ -752,7 +752,7 @@
       <div id="pointDetails" class="point-details">
         <form id="pointAForm" class="endpoint-form">
           <div class="endpoint-title"><label for="coordA"><span class="endpoint-badge a">A</span> From</label><button type="button" id="setA" class="ghost" aria-pressed="false">Set on map</button></div>
-          <label class="field-help" for="coordA">Game coordinates · paste the whole chat line</label>
+          <label class="field-help" for="coordA">Game coordinates · paste the whole chat line, labels and all</label>
           <div class="coordinate-input"><input type="text" id="coordA" autocomplete="off" spellcheck="false" placeholder="x98.43, y110.38" aria-describedby="errorA normalizedA"><button type="submit" class="ghost" aria-label="Apply From coordinates">Apply</button></div>
           <div id="normalizedA" class="normalized">A is not set</div><div class="field-error" id="errorA" role="alert"></div>
         </form>
@@ -764,7 +764,7 @@
         </form>
         <div class="measure-options"><label><input type="checkbox" id="keepA"> Keep A for next measurement</label><button type="button" class="ghost" id="mSwap">Swap A / B</button></div>
         <div class="secondary-actions"><button type="button" class="ghost" id="copyDistance">Copy distance</button><button type="button" class="ghost" id="copyCoords">Copy A + B</button><button type="button" class="ghost" id="mSave">Save pair</button></div>
-        <details class="map-help"><summary>Using the in-game map</summary><p>In game, zoom to a location, right-click and choose <strong>Mark Coordinates</strong>. Copy the chat line into A or B. Press Enter or Apply. Pasted coordinates always use game units.</p><p>Drag empty ground to pan; scroll or pinch to zoom. Drag A or B to edit, or use Set on map. A completed pair stays in place until you edit it.</p><p>Focus the map: arrow keys pan, +/− zoom, Enter selects at the crosshair, A/B edits an endpoint, N starts a new measurement, U undoes, F fits the pair, 0 fits the map, Escape cancels.</p><p>The terrain overview is about 6.4 meters per source pixel. For precise points use game coordinates; whole-meter results do not imply whole-meter image accuracy.</p></details>
+        <details class="map-help"><summary>Using the in-game map</summary><p>In game, zoom to a location, right-click and choose <strong>Mark Coordinates</strong>. Copy the chat line into A or B. Press Enter or Apply. Pasted coordinates always use game units.</p><p><strong>Watch the order.</strong> On the map the game prints the <strong>y</strong> value above the point and the <strong>x</strong> value to its right, so reading down the screen hands you y first. Type them in that order and your point lands somewhere else entirely — <code>x85.91, y72.59</code> and <code>x72.59, y85.91</code> are both real places, so nothing here can warn you. Paste the chat line rather than retyping and the labels travel with it; this box reads them in either order.</p><p>Drag empty ground to pan; scroll or pinch to zoom. Drag A or B to edit, or use Set on map. A completed pair stays in place until you edit it.</p><p>Focus the map: arrow keys pan, +/− zoom, Enter selects at the crosshair, A/B edits an endpoint, N starts a new measurement, U undoes, F fits the pair, 0 fits the map, Escape cancels.</p><p>The terrain overview is about 6.4 meters per source pixel. For precise points use game coordinates; whole-meter results do not imply whole-meter image accuracy.</p></details>
         <details class="saved-pairs"><summary>Saved measurements <span id="savedCount">0</span></summary><div id="savedPairs"></div></details>
       </div>
       <p id="measureStatus" class="measure-status" role="status" aria-live="polite">Choose two locations on the map.</p>
@@ -1015,6 +1015,19 @@
   MAP_DEFS.ozeti.note = "aligned to the in-game map, 20 m RMS";
   MAP_DEFS.ozeti.reference = { date: "2026-09-19", kind: "in-game overview capture",
     method: "gradient cross-correlation, 3x3 tiles", worstTileM: 24, referencePixelM: 15.5 };
+
+  // Bakurani: registered against an in-game overview the same day. Nine tiles
+  // matched with a 12 m spread, so there is no scale or rotation error -- but
+  // that capture carries kilometre labels only along the top, and a text
+  // centroid is a blunter anchor than a tick mark. East placement is therefore
+  // good to about 110 m and north could not be anchored independently at all.
+  // Checked enough to trust the picture, not enough to quote 20 m over it.
+  MAP_DEFS.bakurani.calibration = "partial";
+  MAP_DEFS.bakurani.residualM = 110;
+  MAP_DEFS.bakurani.note = "scale and orientation checked in game; placement to ~110 m";
+  MAP_DEFS.bakurani.reference = { date: "2026-09-19", kind: "in-game overview capture",
+    method: "gradient cross-correlation, 3x3 tiles", tileSpreadM: 12, referencePixelM: 14.4,
+    limitation: "kilometre labels on one axis only; north anchor fitted, not measured" };
 
   /* The in-game map is very nearly greyscale -- measured saturation 0.014 over
      the playable area of the Ozeti capture, with a neutral channel balance --
