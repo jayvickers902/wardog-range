@@ -144,10 +144,17 @@ capture carries kilometre labels on one axis only, so its placement is good to
 about 110 m east and its north anchor was fitted rather than measured. The
 board says exactly that instead of claiming alignment.
 
-**Zestafona is not checked at all**, and still says so. The three renders came
-from separate sources, so one map's result never carries over to another.
-Neither of these two draws a playable boundary, because theirs has not been
-measured.
+**Zestafona is verified** to 28 m RMS, from the best capture of the three --
+tick marks on both axes, so both anchors are measured rather than fitted. Its
+render is the flattest of the three, so individual tiles correlate weakly; the
+evidence is that eight of nine agree to within 19 m of each other, where the
+same capture against the wrong map scatters across hundreds. It draws no
+playable boundary, because that measurement disagrees with the published figure
+by up to 320 m and this capture cannot settle which is right. A verified
+placement and settled bounds are separate claims.
+
+The three renders came from separate sources, so no map's result ever carries
+over to another. Each was checked on its own capture.
 
 ### Reading coordinates off the game
 

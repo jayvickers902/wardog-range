@@ -25,6 +25,13 @@ inspected for that pattern. Read the per-tile table, not just the summary: a
 small mean with a large spread, or offsets growing towards the edges, means
 the placement is wrong in a way the average hides.
 
+The verdict is based on tiles AGREEING with each other, not on the strength of
+any one peak. A flat, low-contrast render produces weak peaks even where it is
+placed perfectly, so a confidence threshold alone would reject a good map. A
+false peak, by contrast, lands anywhere in the search window: scatter means no
+match, clustering means a real one. There is a free control for this -- run it
+against a map the capture is not of, and watch the offsets fly apart.
+
 Nothing here is written back into the app. Copy the numbers into MAP_DEFS and
 docs/MAP-REFERENCE-REVIEW.md yourself, with the date and the capture.
 """
@@ -43,6 +50,7 @@ except ImportError as exc:                                   # pragma: no cover
 
 TERRAIN_M = 16384.0
 RASTER_PX = 2560
+PAD_M = 500.0                                                # correlation search radius
 K = RASTER_PX / TERRAIN_M                                    # raster px per metre
 
 
@@ -248,7 +256,7 @@ def main():
             tile = np.asarray(shot.crop((xs[i], ys[j], xs[i + 1], ys[j + 1])), float)
             box = (kmx(xs[i]) * 1000, kmy(ys[j + 1]) * 1000,
                    kmx(xs[i + 1]) * 1000, kmy(ys[j]) * 1000)
-            got = register(tile, raster, box, 500, mppx, mppy)
+            got = register(tile, raster, box, PAD_M, mppx, mppy)
             if not got:
                 continue
             de, dn, snr = got
@@ -257,21 +265,43 @@ def main():
                   % (j, i, (box[0] + box[2]) / 200, (box[1] + box[3]) / 200,
                      de, dn, float(np.hypot(de, dn)), snr))
 
-    good = [r for r in rows if r[2] >= 6]
-    print("\n%d of %d tiles matched significantly (SNR >= 6)" % (len(good), len(rows)))
-    if len(good) < max(3, len(rows) // 2):
-        print("  TOO FEW MATCHES -- this is not evidence of alignment, in either direction.")
+    if not rows:
+        print("\nno tiles registered at all.")
         return
-    de = np.array([r[0] for r in good])
-    dn = np.array([r[1] for r in good])
-    print("  mean offset     east %+.0f m   north %+.0f m" % (de.mean(), dn.mean()))
+
+    # Per-tile SNR is a poor verdict on a low-contrast render: a flat, hazy map
+    # produces weak peaks even where it is placed perfectly. What cannot happen
+    # by chance is independent tiles AGREEING. A false peak lands anywhere in
+    # the search window, so scatter is the signature of no match and clustering
+    # is the signature of a real one. Run this against the wrong map to see it:
+    # the offsets fly apart.
+    allde = np.array([r[0] for r in rows])
+    alldn = np.array([r[1] for r in rows])
+    mde, mdn = float(np.median(allde)), float(np.median(alldn))
+    rad = np.hypot(allde - mde, alldn - mdn)
+    tol = max(3 * mppx, 60.0)
+    near = rad <= tol
+    strong = np.array([r[2] >= 6 for r in rows])
+    print("\n%d of %d tiles within %.0f m of the median offset; %d also reached SNR 6"
+          % (int(near.sum()), len(rows), tol, int((near & strong).sum())))
+
+    chance = (tol ** 2) / (2.0 * PAD_M) ** 2          # one tile, by luck alone
+    print("  a tile landing that close by chance: about %.1f%%" % (100 * chance))
+
+    if near.sum() < max(3, int(0.6 * len(rows))):
+        print("  SCATTERED -- this is not evidence of alignment, in either direction.")
+        print("  Offsets that disagree by hundreds of metres are false peaks, which is")
+        print("  what the wrong map looks like. Try another map, or a better capture.")
+        return
+
+    de, dn = allde[near], alldn[near]
+    print("  median offset   east %+.0f m   north %+.0f m" % (mde, mdn))
     print("  spread (1 sd)   east  %.0f m   north  %.0f m" % (de.std(), dn.std()))
-    print("  RMS radial      %.0f m     worst tile %.0f m"
-          % (np.sqrt((de ** 2 + dn ** 2).mean()),
-             max(float(np.hypot(*r[:2])) for r in good)))
+    print("  RMS radial      %.0f m     worst agreeing tile %.0f m"
+          % (float(np.sqrt((de ** 2 + dn ** 2).mean())), float(rad[near].max())))
     print("  one capture pixel = %.1f m; one raster pixel = %.1f m" % (mppx, 1 / K))
-    print("\n  A mean far larger than the spread is a placement offset worth fixing.")
-    print("  A spread that grows towards the edges is a scale error; check the table.")
+    print("\n  A median far larger than the spread is a placement offset worth fixing.")
+    print("  Offsets growing towards the edges are a scale error; read the table.")
     print("  Neither is meaningful below about one capture pixel.")
 
 

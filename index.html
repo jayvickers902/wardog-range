@@ -1029,6 +1029,19 @@
     method: "gradient cross-correlation, 3x3 tiles", tileSpreadM: 12, referencePixelM: 14.4,
     limitation: "kilometre labels on one axis only; north anchor fitted, not measured" };
 
+  // Zestafona: tick marks on both axes this time, so both anchors are measured
+  // rather than fitted. Eight of nine tiles agree to within 19 m of each other,
+  // which is the evidence -- its render is flat and hazy, so individual peaks
+  // are weak even where the placement is exact. Playable bounds stay unset: the
+  // boundary reads up to 320 m taller than the community figure and this
+  // capture cannot say which is right, so nothing is drawn for it.
+  MAP_DEFS.zestafona.calibration = "verified";
+  MAP_DEFS.zestafona.residualM = 28;
+  MAP_DEFS.zestafona.note = "aligned to the in-game map, 28 m RMS";
+  MAP_DEFS.zestafona.reference = { date: "2026-09-19", kind: "in-game overview capture",
+    method: "gradient cross-correlation, 3x3 tiles", agreeingTiles: "8 of 9",
+    referencePixelM: 15.8, limitation: "playable bounds not settled" };
+
   /* The in-game map is very nearly greyscale -- measured saturation 0.014 over
      the playable area of the Ozeti capture, with a neutral channel balance --
      and far darker than these renders, which are bright and green. Each map

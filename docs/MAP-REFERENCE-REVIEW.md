@@ -171,6 +171,51 @@ figure, and the board says "scale and orientation checked in game; placement to
 finish it. Its playable bounds are still unmeasured: no boundary box was
 visible in this capture.
 
+## Zestafona verified, 19 September 2026
+
+A third overview, and the best of them: tick marks on **both** axes, 63.32 px/km
+east against 63.21 north, tick residuals of 0.6 and 2.4 px. Both anchors are
+measured rather than fitted, which is what Bakurani's capture could not offer.
+
+Nine ~3.5 km tiles: **eight agree to within 19 m of each other**, median offset
++14 m east and -23 m north, spread 7 m and 9 m, **RMS 28 m**.
+
+### Why agreement, not confidence, is the test
+
+Per-tile SNR ran 2.1 to 7.5 here, against 9.7 to 28.0 on Ozeti. Zestafona's
+render is the flattest of the three -- it was measured at sd 18.1 against
+Ozeti's 34.8 when the tone curves were fitted -- so its edges are weak and its
+correlation peaks are shallow even where the placement is exact. Judged on peak
+strength alone this map would have been rejected.
+
+What cannot happen by accident is independent tiles agreeing. A false peak
+lands anywhere in the +/-500 m search window, so a single tile landing within
+60 m of the median by luck is about a 0.4% event. Eight of nine did.
+
+The control is free, and was run: the same capture against the wrong maps.
+
+| registered against | tiles near the median | verdict |
+| --- | --- | --- |
+| Zestafona | 8 of 9 | median +14 m E, -23 m N |
+| Bakurani | 1 of 9 | scattered, offsets to 635 m |
+| Ozeti | 0 of 9 | scattered, offsets to 704 m |
+
+`tools/register-overview.py` now reports this clustering statistic instead of
+counting confident peaks. Ozeti re-checked under the new rule is unchanged at
+20 m RMS, worst agreeing tile 6 m.
+
+### Playable bounds deliberately left unset
+
+The boundary in this capture measures X 19.65 to 125.75, Y 47.48 to 143.76.
+East agrees with the community figures to 25 m and 86 m, but north disagrees by
+322 m and 186 m: the box reads about 560 m taller than published. The terrain
+itself registers to 28 m, so this is not a placement error -- it is either the
+boundary reading or the published figure, and this capture cannot say which.
+
+`MAP_DEFS.zestafona.playableExtent` therefore stays null and the board draws no
+boundary for it, unlike Ozeti where the two agreed to 85 m. A map may have a
+verified placement and unsettled bounds; they are separate claims.
+
 ## What a close capture cannot do
 
 A zoomed-in capture of the SPH-2 spawn was also supplied, at roughly 2 to 3 m
