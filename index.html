@@ -1,0 +1,1156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Range, bearing and mils between map grid coordinates.">
+<title>Wardogs Range Plot</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ink:       #0E1216;
+    --ground:    #151B21;
+    --panel:     #1D252D;
+    --panel-2:   #232C35;
+    --line:      #2E3943;
+    --line-hot:  #3D4B57;
+    --steel:     #7F8E9B;
+    --steel-dim: #5A6772;
+    --bone:      #DDE5EB;
+    --amber:     #F0A32A;
+    --amber-dim: #7A5417;
+    --hostile:   #D94A3D;
+
+    --b-close:   #6FAE8E;
+    --b-direct:  #7FA3C4;
+    --b-long:    #C9853C;
+    --b-extreme: #D94A3D;
+
+    --display: "Saira Condensed", "Arial Narrow", sans-serif;
+    --body: "Barlow", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  html, body { background: var(--ground); }
+
+  body {
+    margin: 0;
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--bone);
+    background-color: var(--ground);
+    background-image:
+      linear-gradient(var(--ink) 1px, transparent 1px),
+      linear-gradient(90deg, var(--ink) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  [hidden] { display: none !important; }
+
+  .shell {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 24px 48px;
+  }
+
+  /* ---- masthead ---- */
+  .mast {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 14px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--amber);
+  }
+  .mark {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 30px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--amber);
+    line-height: 1;
+  }
+  .mast h1 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 19px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--steel);
+    line-height: 1;
+  }
+  .mast .spacer { flex: 1 1 auto; }
+
+  /* ---- shared control styling ---- */
+  .lbl {
+    display: block;
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--steel-dim);
+    margin-bottom: 5px;
+  }
+  input[type="text"], input[type="number"], select {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    color: var(--bone);
+    background: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 8px 9px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 1px;
+    border-color: var(--amber-dim);
+  }
+  input.bad { border-color: var(--hostile); }
+  input.ok { border-color: var(--b-close); }
+
+  button {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: var(--amber);
+    border: 1px solid var(--amber);
+    border-radius: 2px;
+    padding: 9px 18px;
+    cursor: pointer;
+  }
+  button:hover { background: #FFB944; }
+  button:focus-visible { outline: 2px solid var(--bone); outline-offset: 2px; }
+
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .seg button {
+    background: var(--panel);
+    color: var(--steel);
+    border: 0;
+    border-radius: 0;
+    padding: 7px 13px;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--amber-dim); color: var(--amber); }
+  .seg button:hover { background: var(--panel-2); color: var(--bone); }
+  .seg button[aria-pressed="true"]:hover { background: #8F6320; }
+
+  /* ---- own position ---- */
+  .station {
+    margin-top: 22px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--amber);
+    border-radius: 2px;
+    padding: 16px;
+  }
+  .station .row {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr auto;
+    gap: 12px 18px;
+    align-items: end;
+  }
+  .station .row + .row { margin-top: 14px; }
+  .station .who {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--amber);
+    padding-bottom: 9px;
+    white-space: nowrap;
+  }
+  .station .units { justify-self: end; }
+  .station .row.gun .who { color: var(--b-direct); }
+  .station .row.gun .note {
+    font-family: var(--display);
+    font-size: 11px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--steel-dim);
+    padding-bottom: 10px;
+    justify-self: end;
+    white-space: nowrap;
+  }
+
+  .optline {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+  .optline label {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    cursor: pointer;
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--steel);
+  }
+  .optline input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--b-direct);
+    cursor: pointer;
+    margin: 0;
+  }
+
+  /* ---- main split ---- */
+  .split {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+
+  /* Grid items default to min-width:auto, which lets the range card table
+     push the panel wider than the viewport instead of scrolling inside it. */
+  .split > .panel { min-width: 0; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+  }
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .panel-head h2 {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--steel);
+  }
+  .panel-head .spacer { flex: 1 1 auto; }
+  .speed {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--display);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--steel-dim);
+  }
+  .speed input { width: 62px; padding: 4px 6px; font-size: 13px; }
+  .speed select { width: auto; padding: 4px 6px; font-size: 13px; }
+
+  .plot-body { padding: 12px; }
+  .plot-body svg { display: block; width: 100%; height: auto; max-width: 100%; }
+
+  /* ---- range card ---- */
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  thead th {
+    font-family: var(--display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--steel-dim);
+    text-align: right;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  thead th.l { text-align: left; }
+  tbody td {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--steel);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: var(--panel-2); }
+  td.name {
+    text-align: left;
+    font-family: var(--body);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--bone);
+    white-space: normal;
+  }
+  td.range { color: var(--bone); font-weight: 600; font-size: 16px; }
+  td.brg { color: var(--bone); }
+  td.brg .card { color: var(--steel-dim); }
+  td.obs { color: var(--steel-dim); font-size: 13px; }
+
+  .band {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+
+  .kill {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--steel-dim);
+    padding: 3px 9px;
+    font-size: 15px;
+    line-height: 1;
+    letter-spacing: 0;
+  }
+  .kill:hover { background: var(--hostile); border-color: var(--hostile); color: var(--ink); }
+
+  td.delta { color: var(--steel-dim); font-size: 13px; }
+
+  .hint {
+    font-family: var(--display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--steel-dim);
+  }
+
+  .reset {
+    background: transparent;
+    color: var(--steel);
+    border: 1px solid var(--line);
+    padding: 7px 12px;
+    font-size: 12px;
+    margin-left: 8px;
+  }
+  .reset:hover { background: var(--panel-2); color: var(--bone); border-color: var(--line-hot); }
+
+  .empty {
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--steel-dim);
+    font-family: var(--display);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-size: 13px;
+  }
+
+  /* ---- add marker ---- */
+  .add {
+    border-top: 1px solid var(--line);
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+  .add .span { grid-column: 1 / -1; }
+  .add .sub {
+    display: block;
+    font-family: var(--display);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--steel-dim);
+    margin-top: 5px;
+  }
+  .rule {
+    grid-column: 1 / -1;
+    height: 1px;
+    background: var(--line);
+    margin: 2px 0;
+  }
+
+  /* ---- footer ---- */
+  .notes {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    color: var(--steel-dim);
+    font-size: 13.5px;
+    max-width: 62ch;
+  }
+  .notes h3 {
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--steel);
+    margin: 18px 0 8px;
+  }
+  .notes h3:first-child { margin-top: 0; }
+  .notes p { margin: 0 0 9px; }
+  .notes code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--amber);
+  }
+
+  @media (max-width: 860px) {
+    .split { grid-template-columns: 1fr; }
+    .station .row { grid-template-columns: 1fr 1fr; }
+    .station .who { grid-column: 1 / -1; padding-bottom: 0; }
+    .station .units { grid-column: 1 / -1; justify-self: start; }
+    .station .row.gun .note { grid-column: 1 / -1; justify-self: start; padding-bottom: 0; }
+  }
+  @media (max-width: 560px) {
+    .mark { font-size: 25px; }
+    .add { grid-template-columns: 1fr 1fr; }
+    .add .wide { grid-column: 1 / -1; }
+    .add button { grid-column: 1 / -1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <div class="mast">
+    <div class="mark">Wardogs</div>
+    <h1>Range Plot</h1>
+    <div class="spacer"></div>
+  </div>
+
+  <div class="station">
+    <div class="row">
+      <div class="who">Observer</div>
+      <div>
+        <label class="lbl" for="selfX">Grid X</label>
+        <input type="text" id="selfX" inputmode="decimal" autocomplete="off">
+      </div>
+      <div>
+        <label class="lbl" for="selfY">Grid Y</label>
+        <input type="text" id="selfY" inputmode="decimal" autocomplete="off">
+      </div>
+      <div class="units">
+        <span class="lbl">Input units</span>
+        <div class="seg" role="group" aria-label="Input units">
+          <button type="button" id="unitReadout" aria-pressed="true">Readout 72.88</button>
+          <button type="button" id="unitMetres" aria-pressed="false">Metres 7288</button>
+        </div>
+        <button type="button" id="resetBtn" class="reset">Reset</button>
+      </div>
+    </div>
+
+    <div class="row gun" id="gunRow" hidden>
+      <div class="who">Gun</div>
+      <div>
+        <label class="lbl" for="gunX">Grid X</label>
+        <input type="text" id="gunX" inputmode="decimal" autocomplete="off">
+      </div>
+      <div>
+        <label class="lbl" for="gunY">Grid Y</label>
+        <input type="text" id="gunY" inputmode="decimal" autocomplete="off">
+      </div>
+      <div class="note">Solutions are fired from here</div>
+    </div>
+
+    <div class="optline">
+      <label for="gunSplit">
+        <input type="checkbox" id="gunSplit">
+        Gun at a separate position
+      </label>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="panel">
+      <div class="panel-head"><h2>Plot</h2><div class="spacer"></div><span class="hint" id="plotHint">You at center &middot; north up</span></div>
+      <div class="plot-body"><svg id="plot" viewBox="0 0 400 400" role="img" aria-label="Polar plot of markers around the firing position"></svg></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Range card</h2>
+        <div class="spacer"></div>
+        <label class="speed">Weapon
+          <select id="weapon" aria-label="Weapon envelope">
+            <option value="none">None</option>
+            <option value="l81">L81 mortar</option>
+            <option value="sph2">SPH-2</option>
+          </select>
+        </label>
+        <label class="speed">Transit
+          <input type="text" id="speed" inputmode="decimal" autocomplete="off" aria-label="Transit speed in km/h">
+          km/h
+        </label>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr id="headRow"></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="add">
+        <div class="span">
+          <label class="lbl" for="pasteBox">Paste a marked coordinate</label>
+          <input type="text" id="pasteBox" placeholder="Tower 4  x70.36 y100.25" autocomplete="off">
+          <span class="sub">In game: right-click the map &rarr; Mark Coordinates [M], then paste the chat line here</span>
+        </div>
+        <div class="rule"></div>
+        <div class="wide">
+          <label class="lbl" for="newName">Marker name</label>
+          <input type="text" id="newName" placeholder="Tower 4" autocomplete="off">
+        </div>
+        <div>
+          <label class="lbl" for="newX">Grid X</label>
+          <input type="text" id="newX" inputmode="decimal" autocomplete="off">
+        </div>
+        <div>
+          <label class="lbl" for="newY">Grid Y</label>
+          <input type="text" id="newY" inputmode="decimal" autocomplete="off">
+        </div>
+        <button type="button" id="addBtn">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h3>Calibration</h3>
+    <p>One grid square is <strong>1 km</strong> and the in-game readout is in hundreds of metres, so <code>x72.88 / y105.33</code> is 7288 m east, 10533 m north. Y increases northward — grid 12 sits above grid 10. The whole terrain runs 0 to 163.84 on both axes, 16.384 km a side.</p>
+    <p>Bearings are grid north, clockwise, with mils on the 6400-per-circle scale — the same scale the gun sights use. Markers are kept in this browser only.</p>
+
+    <h3>Observer and gun</h3>
+    <p>With <em>Gun at a separate position</em> off, every solution is measured from you. Turn it on and the range card solves from the gun instead, with a <strong>From obs</strong> column giving your own range and bearing to the same marker — spot from one place, fire from another.</p>
+
+    <h3>Weapon envelopes</h3>
+    <p>Pick a weapon and the band column becomes a real answer instead of a distance bracket. <strong>L81 mortar</strong> reaches 52–685 m on level ground, high arc only, sight 120–950 mil. <strong>SPH-2</strong> reaches 745–2660 m, elevation 0–1400 mil, with the low arc only available from about 1070 m out.</p>
+    <p><strong>Spread</strong> is the grouping radius at that range, from the gun's angular dispersion — 50 MOA for the mortar, 10 MOA for the SPH-2. It is <code>range &times; MOA &times; &pi; / 10800</code>, which puts the mortar at about &plusmn;10 m at its maximum and the SPH-2 at about &plusmn;7.7 m at its own.</p>
+
+    <h3>What this does not know</h3>
+    <p>Every figure here is flat-ground and two-dimensional. There is no terrain height, and altitude is the biggest error term in indirect fire: the mortar reaches roughly 735 m firing 100 m downhill and only about 625 m firing 100 m uphill. None of these numbers have been published by Bulkhead — they are community measurement, and the sources disagree with each other. Fire a ranging shell; the first shell tells the truth.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORE = "wardogs-range-plot-v2";
+  var STORE_V1 = "wardogs-range-plot-v1";
+  var PTS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+
+  // Envelopes are community measurement, not published figures. Ranges are
+  // level-ground: a height difference between gun and target moves them by
+  // more than these numbers suggest, and this page has no terrain.
+  var WEAPONS = {
+    none: { name: "None" },
+    l81:  { name: "L81 mortar", min: 52,  max: 685,  moa: 50, lowArcFrom: null },
+    sph2: { name: "SPH-2",      min: 745, max: 2660, moa: 10, lowArcFrom: 1070 }
+  };
+  var MOA_RAD = Math.PI / (180 * 60);
+
+  var SEED_SELF = { x: 5408, y: 11569 };
+  function seedTargets() {
+    return [
+      { id: 1, name: "Tower 2", x: 7288, y: 10533 },
+      { id: 2, name: "Tower 3", x: 7036, y: 10025 }
+    ];
+  }
+
+  var state = {
+    unit: "readout",
+    speed: 40,
+    weapon: "none",
+    gunSplit: false,
+    self: { x: SEED_SELF.x, y: SEED_SELF.y },
+    gun: { x: SEED_SELF.x, y: SEED_SELF.y },
+    targets: seedTargets(),
+    nextId: 3
+  };
+
+  function adopt(saved) {
+    if (!saved || !saved.self || !Array.isArray(saved.targets)) return;
+    state.unit = saved.unit === "metres" ? "metres" : "readout";
+    state.speed = Number(saved.speed) > 0 ? Number(saved.speed) : 40;
+    state.weapon = WEAPONS[saved.weapon] ? saved.weapon : "none";
+    state.gunSplit = saved.gunSplit === true;
+    state.self = { x: Number(saved.self.x) || 0, y: Number(saved.self.y) || 0 };
+    state.gun = saved.gun
+      ? { x: Number(saved.gun.x) || 0, y: Number(saved.gun.y) || 0 }
+      : { x: state.self.x, y: state.self.y };
+    state.targets = saved.targets.map(function (t, i) {
+      return { id: Number(t.id) || i + 1, name: String(t.name || "Marker"), x: Number(t.x) || 0, y: Number(t.y) || 0 };
+    });
+    state.nextId = state.targets.reduce(function (m, t) { return Math.max(m, t.id); }, 0) + 1;
+  }
+
+  try {
+    // v1 had no gun and no weapon; it still loads, and the gun defaults to the
+    // observer so an upgraded page behaves exactly as it did before.
+    adopt(JSON.parse(localStorage.getItem(STORE) || localStorage.getItem(STORE_V1) || "null"));
+  } catch (e) { /* storage unavailable — seeded defaults stand */ }
+
+  function save() {
+    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var selfX = $("selfX"), selfY = $("selfY"), speedEl = $("speed"), weaponEl = $("weapon");
+  var gunX = $("gunX"), gunY = $("gunY"), gunRow = $("gunRow"), gunSplitEl = $("gunSplit");
+  var newName = $("newName"), newX = $("newX"), newY = $("newY"), pasteBox = $("pasteBox");
+  var rows = $("rows"), headRow = $("headRow"), plot = $("plot"), plotHint = $("plotHint");
+
+  /* ---- units: everything is stored in metres ---- */
+  function toMetres(raw) {
+    var v = parseFloat(String(raw).replace(/,/g, "."));
+    if (!isFinite(v)) return null;
+    return state.unit === "readout" ? v * 100 : v;
+  }
+  function fromMetres(m) {
+    return state.unit === "readout" ? (m / 100).toFixed(2) : String(Math.round(m));
+  }
+  function gridLabel(t) {
+    return fromMetres(t.x) + " / " + fromMetres(t.y);
+  }
+
+  /* ---- pasted coordinates ----
+     The game writes a marked position into squad chat, so the fastest input is
+     a paste. Accepts "x70.36 y100.25", "70.36, 100.25", "X 70.36 · Y 100.25"
+     and the same with a name in front, in either axis order. */
+  function normalisePasted(s) {
+    // A comma with one or two digits after it is a decimal comma ("70,36");
+    // any other comma is separating the pair.
+    return String(s).replace(/,(\d{1,2})(?!\d)/g, ".$1").replace(/,/g, " ");
+  }
+  function parsePair(text) {
+    var s = normalisePasted(text);
+    var xy = s.match(/x\s*[:=]?\s*(-?\d+(?:\.\d+)?)[^\d+-]{0,12}y\s*[:=]?\s*(-?\d+(?:\.\d+)?)/i);
+    if (xy) return { x: parseFloat(xy[1]), y: parseFloat(xy[2]), at: s.search(/x\s*[:=]?\s*-?\d/i) };
+    var yx = s.match(/y\s*[:=]?\s*(-?\d+(?:\.\d+)?)[^\d+-]{0,12}x\s*[:=]?\s*(-?\d+(?:\.\d+)?)/i);
+    if (yx) return { x: parseFloat(yx[2]), y: parseFloat(yx[1]), at: s.search(/y\s*[:=]?\s*-?\d/i) };
+    var nums = s.match(/-?\d+(?:\.\d+)?/g);
+    if (nums && nums.length >= 2) return { x: parseFloat(nums[0]), y: parseFloat(nums[1]), at: s.indexOf(nums[0]) };
+    return null;
+  }
+  // Pasted numbers are in whatever unit the page is set to, same as typed ones.
+  function pairToMetres(p) {
+    var k = state.unit === "readout" ? 100 : 1;
+    return { x: p.x * k, y: p.y * k };
+  }
+
+  /* ---- solution ---- */
+  function firingPoint() { return state.gunSplit ? state.gun : state.self; }
+
+  function solve(from, t) {
+    var dE = t.x - from.x;
+    var dN = t.y - from.y;
+    var range = Math.sqrt(dE * dE + dN * dN);
+    var brg = Math.atan2(dE, dN) * 180 / Math.PI;
+    if (brg < 0) brg += 360;
+    return { range: range, brg: brg, mils: brg * 6400 / 360 };
+  }
+
+  function weapon() { return WEAPONS[state.weapon] || WEAPONS.none; }
+  function armed() { return !!weapon().max; }
+
+  function bandOf(r) {
+    if (r < 500) return { k: "Close", c: "var(--b-close)" };
+    if (r < 1200) return { k: "Direct", c: "var(--b-direct)" };
+    if (r < 2500) return { k: "Long", c: "var(--b-long)" };
+    return { k: "Extreme", c: "var(--b-extreme)" };
+  }
+
+  function envelopeOf(r) {
+    var w = weapon();
+    if (!w.max) return bandOf(r);
+    if (r < w.min) return { k: "Too close", c: "var(--b-extreme)" };
+    if (r > w.max) return { k: "Out of range", c: "var(--b-extreme)" };
+    if (w.lowArcFrom && r < w.lowArcFrom) return { k: "High arc only", c: "var(--b-long)" };
+    return { k: "In envelope", c: "var(--b-close)" };
+  }
+
+  // Grouping is an angle, so the circle it puts shells into grows with range.
+  function spreadOf(r) {
+    var w = weapon();
+    if (!w.max || r < w.min || r > w.max) return null;
+    return r * w.moa * MOA_RAD;
+  }
+
+  function metres(m) {
+    return Math.round(m).toLocaleString("en-US") + " m";
+  }
+
+  // Signed offset, shown so a mistyped position is obvious at a glance:
+  // if a marker you can see to the east reads "E -1,488", the input is wrong,
+  // not the trigonometry.
+  function sgn(v) {
+    var s = v >= 0 ? "+" : "−";
+    return s + Math.abs(Math.round(v)).toLocaleString("en-US");
+  }
+
+  function transit(m) {
+    var kmh = state.speed > 0 ? state.speed : 40;
+    var s = Math.round(m / (kmh * 1000 / 3600));
+    var mm = Math.floor(s / 60), ss = s % 60;
+    return mm + ":" + (ss < 10 ? "0" : "") + ss;
+  }
+
+  function solved() {
+    var fp = firingPoint();
+    return state.targets.map(function (t) {
+      var g = solve(fp, t);
+      return {
+        t: t,
+        range: g.range,
+        brg: g.brg,
+        mils: g.mils,
+        obs: state.gunSplit ? solve(state.self, t) : null
+      };
+    }).sort(function (a, b) { return a.range - b.range; });
+  }
+
+  /* ---- range card ---- */
+  function columns() {
+    var cols = ["Marker", "Grid", "Offset", "Range", "Bearing", "Mils"];
+    if (state.gunSplit) cols.push("From obs");
+    cols.push("Transit");
+    if (armed()) cols.push("Spread");
+    cols.push(armed() ? "Envelope" : "Band");
+    cols.push("");
+    return cols;
+  }
+
+  function renderHead(cols) {
+    headRow.textContent = "";
+    cols.forEach(function (c, i) {
+      var th = document.createElement("th");
+      if (i === 0) th.className = "l";
+      th.textContent = c;
+      headRow.appendChild(th);
+    });
+  }
+
+  function renderTable(list, cols) {
+    rows.textContent = "";
+    if (!list.length) {
+      var tr = document.createElement("tr");
+      var td = document.createElement("td");
+      td.colSpan = cols.length;
+      td.className = "empty";
+      td.textContent = "No markers plotted";
+      tr.appendChild(td);
+      rows.appendChild(tr);
+      return;
+    }
+
+    var fp = firingPoint();
+
+    list.forEach(function (r) {
+      var b = envelopeOf(r.range);
+      var tr = document.createElement("tr");
+
+      function cell(cls, text) {
+        var td = document.createElement("td");
+        if (cls) td.className = cls;
+        if (text !== undefined) td.textContent = text;
+        tr.appendChild(td);
+        return td;
+      }
+
+      cell("name", r.t.name);
+      cell("", gridLabel(r.t));
+      cell("delta", "E " + sgn(r.t.x - fp.x) + "  N " + sgn(r.t.y - fp.y));
+      cell("range", metres(r.range));
+
+      var brgTd = cell("brg");
+      brgTd.appendChild(document.createTextNode(r.brg.toFixed(1) + "° "));
+      var card = document.createElement("span");
+      card.className = "card";
+      card.textContent = PTS[Math.round(r.brg / 22.5) % 16];
+      brgTd.appendChild(card);
+
+      cell("", Math.round(r.mils) + " mil");
+
+      if (state.gunSplit) {
+        cell("obs", r.obs ? metres(r.obs.range) + " · " + r.obs.brg.toFixed(0) + "°" : "—");
+      }
+
+      cell("", transit(r.range));
+
+      if (armed()) {
+        var sp = spreadOf(r.range);
+        cell("delta", sp === null ? "—" : "±" + Math.round(sp) + " m");
+      }
+
+      var bandTd = cell("");
+      var span = document.createElement("span");
+      span.className = "band";
+      var dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.background = b.c;
+      span.appendChild(dot);
+      span.appendChild(document.createTextNode(b.k));
+      span.style.color = b.c;
+      bandTd.appendChild(span);
+
+      var killTd = cell("");
+      var kill = document.createElement("button");
+      kill.type = "button";
+      kill.className = "kill";
+      kill.textContent = "×";
+      kill.setAttribute("aria-label", "Remove " + r.t.name);
+      kill.addEventListener("click", function () {
+        state.targets = state.targets.filter(function (x) { return x.id !== r.t.id; });
+        save();
+        render();
+      });
+      killTd.appendChild(kill);
+
+      rows.appendChild(tr);
+    });
+  }
+
+  /* ---- polar plot ---- */
+  function niceStep(raw) {
+    var steps = [10, 25, 50, 100, 250, 500, 1000, 2000, 2500, 5000, 10000];
+    for (var i = 0; i < steps.length; i++) if (steps[i] >= raw) return steps[i];
+    return steps[steps.length - 1];
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function renderPlot(list) {
+    var C = 200, R = 150;
+    var fp = firingPoint();
+    var obs = state.gunSplit ? solve(fp, state.self) : null;
+
+    var max = list.length ? list[list.length - 1].range : 0;
+    if (obs) max = Math.max(max, obs.range);
+    if (max <= 0) max = 1000;
+    var step = niceStep(max / 3);
+    var plotMax = Math.max(step, Math.ceil(max / step) * step);
+    var k = R / plotMax;
+    var svg = [];
+
+    svg.push('<rect x="0" y="0" width="400" height="400" fill="var(--ink)"/>');
+
+    // corner ticks — plotting-board frame
+    [[8, 8, 1, 1], [392, 8, -1, 1], [8, 392, 1, -1], [392, 392, -1, -1]].forEach(function (c) {
+      svg.push('<path d="M' + c[0] + ' ' + (c[1] + 16 * c[3]) + ' L' + c[0] + ' ' + c[1] +
+        ' L' + (c[0] + 16 * c[2]) + ' ' + c[1] + '" fill="none" stroke="var(--line-hot)" stroke-width="1.5"/>');
+    });
+
+    // range rings
+    for (var r = step; r <= plotMax + 0.5; r += step) {
+      var rr = r * k;
+      svg.push('<circle cx="' + C + '" cy="' + C + '" r="' + rr.toFixed(1) +
+        '" fill="none" stroke="var(--line)" stroke-width="1"/>');
+      svg.push('<text x="' + (C + rr - 3).toFixed(1) + '" y="' + (C + 13) +
+        '" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9" fill="var(--steel-dim)">' +
+        Math.round(r) + '</text>');
+    }
+
+    // weapon envelope — the reachable annulus, under everything else
+    var w = weapon();
+    if (w.max) {
+      var inner = Math.min(w.min * k, R + 30);
+      var outer = Math.min(w.max * k, R + 30);
+      if (outer > inner) {
+        svg.push('<circle cx="' + C + '" cy="' + C + '" r="' + ((inner + outer) / 2).toFixed(1) +
+          '" fill="none" stroke="var(--b-close)" stroke-width="' + (outer - inner).toFixed(1) +
+          '" stroke-opacity="0.07"/>');
+        [inner, outer].forEach(function (rad) {
+          svg.push('<circle cx="' + C + '" cy="' + C + '" r="' + rad.toFixed(1) +
+            '" fill="none" stroke="var(--b-close)" stroke-width="1" stroke-opacity="0.45" stroke-dasharray="4 4"/>');
+        });
+      }
+    }
+
+    // axes and diagonals
+    svg.push('<line x1="' + C + '" y1="' + (C - R - 12) + '" x2="' + C + '" y2="' + (C + R + 12) +
+      '" stroke="var(--line)" stroke-width="1"/>');
+    svg.push('<line x1="' + (C - R - 12) + '" y1="' + C + '" x2="' + (C + R + 12) + '" y2="' + C +
+      '" stroke="var(--line)" stroke-width="1"/>');
+    [45, 135, 225, 315].forEach(function (a) {
+      var rad = a * Math.PI / 180;
+      svg.push('<line x1="' + C + '" y1="' + C +
+        '" x2="' + (C + Math.sin(rad) * R).toFixed(1) +
+        '" y2="' + (C - Math.cos(rad) * R).toFixed(1) +
+        '" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="3 5"/>');
+    });
+
+    // cardinals
+    var cards = [["N", C, C - R - 18], ["E", C + R + 16, C + 4], ["S", C, C + R + 26], ["W", C - R - 16, C + 4]];
+    cards.forEach(function (c) {
+      svg.push('<text x="' + c[1] + '" y="' + c[2] +
+        '" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-size="13" font-weight="700" letter-spacing="1" fill="' +
+        (c[0] === "N" ? "var(--amber)" : "var(--steel-dim)") + '">' + c[0] + '</text>');
+    });
+
+    // targets
+    list.forEach(function (d) {
+      var rad = d.brg * Math.PI / 180;
+      var x = C + Math.sin(rad) * d.range * k;
+      var y = C - Math.cos(rad) * d.range * k;
+      var col = envelopeOf(d.range).c;
+      svg.push('<line x1="' + C + '" y1="' + C + '" x2="' + x.toFixed(1) + '" y2="' + y.toFixed(1) +
+        '" stroke="' + col + '" stroke-width="1" stroke-opacity="0.35"/>');
+
+      // Grouping circle, drawn to true scale — if it is invisible at this
+      // zoom that is the honest answer: dispersion is not what is missing you.
+      var sp = spreadOf(d.range);
+      if (sp !== null) {
+        svg.push('<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (sp * k).toFixed(2) +
+          '" fill="none" stroke="var(--bone)" stroke-width="0.75" stroke-opacity="0.7"/>');
+      }
+
+      svg.push('<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="' + col + '"/>');
+      svg.push('<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="none" stroke="' + col + '" stroke-width="1" stroke-opacity="0.5"/>');
+
+      var right = x >= C;
+      var tx = Math.min(Math.max(x + (right ? 14 : -14), 26), 374);
+      var ty = Math.min(Math.max(y + 4, 20), 384);
+      svg.push('<text x="' + tx.toFixed(1) + '" y="' + ty.toFixed(1) +
+        '" text-anchor="' + (right ? "start" : "end") +
+        '" font-family="Saira Condensed, sans-serif" font-size="13" font-weight="600" fill="var(--bone)">' +
+        esc(d.t.name) + '</text>');
+    });
+
+    // observer, when it is not standing on the gun
+    if (obs) {
+      var orad = obs.brg * Math.PI / 180;
+      var ox = C + Math.sin(orad) * obs.range * k;
+      var oy = C - Math.cos(orad) * obs.range * k;
+      svg.push('<line x1="' + C + '" y1="' + C + '" x2="' + ox.toFixed(1) + '" y2="' + oy.toFixed(1) +
+        '" stroke="var(--amber)" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="4 4"/>');
+      svg.push('<path d="M' + ox.toFixed(1) + ' ' + (oy - 6).toFixed(1) +
+        ' L' + (ox + 6).toFixed(1) + ' ' + oy.toFixed(1) +
+        ' L' + ox.toFixed(1) + ' ' + (oy + 6).toFixed(1) +
+        ' L' + (ox - 6).toFixed(1) + ' ' + oy.toFixed(1) + ' Z" fill="var(--amber)"/>');
+      svg.push('<text x="' + Math.min(Math.max(ox + 11, 26), 374).toFixed(1) +
+        '" y="' + Math.min(Math.max(oy + 4, 20), 384).toFixed(1) +
+        '" font-family="Saira Condensed, sans-serif" font-size="12" font-weight="600" fill="var(--amber)">OBS</text>');
+    }
+
+    // firing point last, so it sits on top
+    var fpCol = state.gunSplit ? "var(--b-direct)" : "var(--amber)";
+    svg.push('<circle cx="' + C + '" cy="' + C + '" r="13" fill="none" stroke="' + fpCol + '" stroke-width="1" stroke-opacity="0.4"/>');
+    svg.push('<path d="M' + C + ' ' + (C - 8) + ' L' + (C + 7) + ' ' + (C + 6) + ' L' + C + ' ' + (C + 2) + ' L' + (C - 7) + ' ' + (C + 6) + ' Z" fill="' + fpCol + '"/>');
+
+    plot.innerHTML = svg.join("");
+  }
+
+  function render() {
+    var cols = columns();
+    var list = solved();
+    renderHead(cols);
+    renderTable(list, cols);
+    renderPlot(list);
+    plotHint.textContent = state.gunSplit ? "Gun at center · north up" : "You at center · north up";
+  }
+
+  function syncInputs() {
+    selfX.value = fromMetres(state.self.x);
+    selfY.value = fromMetres(state.self.y);
+    gunX.value = fromMetres(state.gun.x);
+    gunY.value = fromMetres(state.gun.y);
+    speedEl.value = String(state.speed);
+    weaponEl.value = state.weapon;
+    gunSplitEl.checked = state.gunSplit;
+    gunRow.hidden = !state.gunSplit;
+    var readout = state.unit === "readout";
+    newX.placeholder = readout ? "70.36" : "7036";
+    newY.placeholder = readout ? "100.25" : "10025";
+    pasteBox.placeholder = readout ? "Tower 4  x70.36 y100.25" : "Tower 4  x7036 y10025";
+  }
+
+  /* ---- wiring ---- */
+  function bindPoint(el, point, axis) {
+    el.addEventListener("input", function () {
+      var m = toMetres(el.value);
+      if (m === null) { el.classList.add("bad"); return; }
+      el.classList.remove("bad");
+      state[point][axis] = m;
+      save();
+      render();
+    });
+  }
+  bindPoint(selfX, "self", "x");
+  bindPoint(selfY, "self", "y");
+  bindPoint(gunX, "gun", "x");
+  bindPoint(gunY, "gun", "y");
+
+  // Pasting a whole pair into an X box fills both, so a marked coordinate
+  // never has to be split by hand.
+  function bindPastePair(xEl, yEl) {
+    xEl.addEventListener("paste", function (e) {
+      var dt = e.clipboardData || window.clipboardData;
+      if (!dt) return;
+      var p = parsePair(dt.getData("text"));
+      if (!p) return;
+      e.preventDefault();
+      xEl.value = String(p.x);
+      yEl.value = String(p.y);
+      xEl.classList.remove("bad");
+      yEl.classList.remove("bad");
+      xEl.dispatchEvent(new Event("input", { bubbles: true }));
+      yEl.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+  bindPastePair(selfX, selfY);
+  bindPastePair(gunX, gunY);
+  bindPastePair(newX, newY);
+
+  speedEl.addEventListener("input", function () {
+    var v = parseFloat(speedEl.value);
+    if (!isFinite(v) || v <= 0) { speedEl.classList.add("bad"); return; }
+    speedEl.classList.remove("bad");
+    state.speed = v;
+    save();
+    render();
+  });
+
+  weaponEl.addEventListener("change", function () {
+    state.weapon = WEAPONS[weaponEl.value] ? weaponEl.value : "none";
+    save();
+    render();
+  });
+
+  gunSplitEl.addEventListener("change", function () {
+    state.gunSplit = gunSplitEl.checked;
+    // Starting the gun on top of the observer means the numbers do not jump
+    // the moment the row appears; move it from there.
+    if (state.gunSplit && !state.gun.x && !state.gun.y) {
+      state.gun = { x: state.self.x, y: state.self.y };
+    }
+    syncInputs();
+    save();
+    render();
+  });
+
+  function setUnit(u) {
+    state.unit = u;
+    $("unitReadout").setAttribute("aria-pressed", String(u === "readout"));
+    $("unitMetres").setAttribute("aria-pressed", String(u === "metres"));
+    newX.value = "";
+    newY.value = "";
+    pasteBox.value = "";
+    syncInputs();
+    save();
+    render();
+  }
+  $("unitReadout").addEventListener("click", function () { setUnit("readout"); });
+  $("unitMetres").addEventListener("click", function () { setUnit("metres"); });
+
+  // Stored state survives reloads, so a position typed in wrong once keeps
+  // poisoning every solution until it is cleared. This is that escape hatch.
+  $("resetBtn").addEventListener("click", function () {
+    try {
+      localStorage.removeItem(STORE);
+      localStorage.removeItem(STORE_V1);
+    } catch (e) { /* ignore */ }
+    state.self = { x: SEED_SELF.x, y: SEED_SELF.y };
+    state.gun = { x: SEED_SELF.x, y: SEED_SELF.y };
+    state.gunSplit = false;
+    state.weapon = "none";
+    state.targets = seedTargets();
+    state.nextId = 3;
+    [selfX, selfY, gunX, gunY, newX, newY, pasteBox].forEach(function (el) {
+      el.classList.remove("bad");
+    });
+    syncInputs();
+    save();
+    render();
+  });
+
+  function pushMarker(name, x, y) {
+    var id = state.nextId++;
+    state.targets.push({ id: id, name: name || "Marker " + id, x: x, y: y });
+    save();
+    render();
+  }
+
+  function addMarker() {
+    var x = toMetres(newX.value), y = toMetres(newY.value);
+    newX.classList.toggle("bad", x === null);
+    newY.classList.toggle("bad", y === null);
+    if (x === null || y === null) return;
+    pushMarker(newName.value.trim(), x, y);
+    newName.value = "";
+    newX.value = "";
+    newY.value = "";
+    newName.focus();
+  }
+  $("addBtn").addEventListener("click", addMarker);
+  [newName, newX, newY].forEach(function (el) {
+    el.addEventListener("keydown", function (e) { if (e.key === "Enter") addMarker(); });
+  });
+
+  /* ---- paste box: one line in, one marker out ---- */
+  function takePaste() {
+    var raw = pasteBox.value.trim();
+    if (!raw) return;
+    var p = parsePair(raw);
+    if (!p) {
+      pasteBox.classList.remove("ok");
+      pasteBox.classList.add("bad");
+      return;
+    }
+    // Anything in front of the first number is the name, if there is anything.
+    var name = (p.at > 0 ? raw.slice(0, p.at) : "").replace(/[\s:,;·|—-]+$/, "").trim();
+    var m = pairToMetres(p);
+    pushMarker(name, m.x, m.y);
+    pasteBox.value = "";
+    pasteBox.classList.remove("bad");
+    pasteBox.classList.add("ok");
+    setTimeout(function () { pasteBox.classList.remove("ok"); }, 900);
+  }
+  pasteBox.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); takePaste(); }
+  });
+  pasteBox.addEventListener("input", function () { pasteBox.classList.remove("bad"); });
+  // A paste into an empty box is unambiguous — take it straight away.
+  pasteBox.addEventListener("paste", function (e) {
+    if (pasteBox.value.trim() !== "") return;
+    var dt = e.clipboardData || window.clipboardData;
+    if (!dt) return;
+    var text = dt.getData("text");
+    if (!parsePair(text)) return;
+    e.preventDefault();
+    pasteBox.value = text;
+    takePaste();
+  });
+
+  setUnit(state.unit);
+})();
+</script>
+
+</body>
+</html>

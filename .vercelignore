@@ -1,0 +1,7 @@
+# Vercel serves the generated index.html as a static site; nothing else ships.
+serve.py
+build.py
+src/
+README.md
+*.log
+.venv/
