@@ -1,3 +1,6 @@
 # build.py writes index.html with explicit LF newlines. Without this, autocrlf
 # checks it out as CRLF and every build shows a spurious whole-file diff.
 * text=auto eol=lf
+
+# Map renders are binary; keep the eol rule above away from them.
+*.webp binary

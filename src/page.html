@@ -266,7 +266,7 @@
 
   /* ---- range card ---- */
   .scroll { overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 640px; }
   thead th {
     font-family: var(--display);
     font-size: 11px;
@@ -328,6 +328,22 @@
   }
   .kill:hover { background: var(--hostile); border-color: var(--hostile); color: var(--ink); }
 
+  /* The card gains columns with the gun split on and a weapon picked, so on a
+     narrow panel the remove button ends up off the right edge behind a
+     horizontal scroll -- the one control nobody should have to go looking for.
+     Pinning that column holds it on screen at any table width. */
+  thead th.kill-cell,
+  tbody td.kill-cell {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  tbody tr:hover td.kill-cell { background: var(--panel-2); }
+
   td.delta { color: var(--steel-dim); font-size: 13px; }
 
   .hint {
@@ -385,6 +401,121 @@
     margin: 2px 0;
   }
 
+  /* ---- map board ---- */
+  .map-panel { margin-top: 18px; }
+
+  .modebar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .modebar .lbl { margin: 0 -4px 0 0; }
+  .modebar .spacer { flex: 1 1 auto; }
+
+  .hint.live {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    color: var(--steel);
+  }
+
+  .board-wrap { padding: 12px; }
+  .board-frame {
+    position: relative;
+    width: min(100%, 72vh);
+    margin-inline: auto;
+  }
+  .board {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    cursor: crosshair;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .board.move { cursor: move; }
+  .board.arm { cursor: crosshair; }
+  .board-wrap.drop-on .board { outline: 2px dashed var(--amber); outline-offset: -5px; }
+
+  .readout {
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    min-width: 184px;
+    background: rgba(14, 18, 22, 0.93);
+    border: 1px solid var(--line-hot);
+    border-left: 3px solid var(--amber);
+    border-radius: 2px;
+    padding: 10px 12px;
+  }
+  .readout .mline {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 18px;
+  }
+  .readout .mline + .mline { margin-top: 2px; }
+  .readout .mk {
+    font-family: var(--display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--steel-dim);
+  }
+  .readout .mv {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    color: var(--steel);
+  }
+  .readout .mv.big { font-size: 18px; font-weight: 600; color: var(--bone); }
+  .readout .acts { display: flex; gap: 6px; margin-top: 10px; }
+  .readout .acts button { padding: 5px 10px; font-size: 11px; }
+
+  .ghost {
+    background: transparent;
+    color: var(--steel);
+    border: 1px solid var(--line);
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+  .ghost:hover { background: var(--panel-2); color: var(--bone); border-color: var(--line-hot); }
+  .ghost[aria-pressed="true"] { background: var(--amber-dim); color: var(--amber); border-color: var(--amber-dim); }
+
+  .imgbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--line);
+  }
+  .imgbar .spacer { flex: 1 1 auto; }
+  .imgbar .fade { display: inline-flex; align-items: center; gap: 8px; }
+  .imgbar .fade .lbl { margin: 0; }
+  .imgbar input[type="range"] { width: 104px; accent-color: var(--amber); }
+  .imgbar .msg { max-width: 46ch; text-align: right; }
+  .imgbar .msg.warn { color: var(--hostile); }
+  .hide { display: none; }
+
+  /* Markers carry their names on the map, so renaming has to live somewhere --
+     the name cell is the obvious place. */
+  td.name[contenteditable="true"] { cursor: text; }
+  td.name[contenteditable="true"]:focus {
+    outline: 1px solid var(--amber);
+    outline-offset: 2px;
+  }
+
   /* ---- footer ---- */
   .notes {
     margin-top: 28px;
@@ -420,6 +551,14 @@
   }
   @media (max-width: 560px) {
     .mark { font-size: 25px; }
+    /* The board is only a few hundred pixels wide on a phone; a readout
+       floating over it would cover the ground you are measuring. */
+    .readout {
+      position: static;
+      margin-top: 10px;
+      min-width: 0;
+    }
+    .imgbar .msg { text-align: left; }
     .add { grid-template-columns: 1fr 1fr; }
     .add .wide { grid-column: 1 / -1; }
     .add button { grid-column: 1 / -1; }
@@ -427,15 +566,204 @@
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; animation: none !important; }
   }
+
+  /* The ruler is the workspace; advanced tools stay available in Details. */
+  :root { --steel: #AAB7C2; --steel-dim: #A3B0BB; --b-direct: #99CCE8; }
+  * { box-sizing: border-box; }
+  body { background: var(--ink); }
+  button, select, input[type="text"] { min-height: 44px; }
+  button { letter-spacing: .07em; }
+  button:disabled { opacity: .42; cursor: default; }
+  button:disabled:hover { background: var(--panel); }
+  button:active:not(:disabled) { filter: brightness(1.18); }
+  input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--amber); }
+  .sr-only { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .shell { max-width:none; height:100vh; height:100dvh; padding:12px 16px max(12px, env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:12px; }
+  .mast { flex:none; align-items:center; padding-bottom:10px; gap:8px; }
+  .brand { display:flex; align-items:baseline; gap:14px; margin-right:14px; }
+  .mark { font-size:28px; letter-spacing:.1em; }
+  .mast h1 { font-size:17px; letter-spacing:.1em; color:var(--steel); }
+  .terrain-picker select { width:155px; }
+  .workspace { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:12px; }
+  .map-panel { margin:0; min-height:0; min-width:0; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--line-hot); background:var(--ink); }
+  .map-toolbar { display:flex; align-items:center; padding:8px; gap:12px; border-bottom:1px solid var(--line); }
+  .map-toolbar p { margin:0; font-size:14px; line-height:1.35; color:var(--bone); }
+  .board-wrap { flex:1; min-height:0; padding:0; }
+  .board-frame { width:100%; height:100%; margin:0; overflow:hidden; }
+  .board { width:100%; height:100%; aspect-ratio:auto; border:0; border-radius:0; }
+  .board:focus-visible { outline:2px solid var(--amber); outline-offset:-3px; }
+  .map-zoom { position:absolute; top:30px; right:12px; display:flex; flex-direction:column; box-shadow:0 4px 16px #0006; }
+  .map-zoom button { min-width:48px; background:#111920ee; color:var(--bone); border-color:var(--line-hot); }
+  .map-zoom button:first-child,.map-zoom button:nth-child(2) { font-size:23px; line-height:1; }
+  .north { position:absolute; left:14px; top:34px; font:18px var(--mono); text-shadow:0 1px 4px #000,0 1px 4px #000; pointer-events:none; }
+  .map-scale { position:absolute; bottom:14px; left:14px; padding:8px 10px; display:flex; flex-direction:column; gap:4px; background:#0e1216e8; font:12px var(--mono); pointer-events:none; }
+  #scaleBar { display:block; width:100px; height:7px; border:solid var(--bone); border-width:0 2px 2px; }
+  #gridSpacing { color:var(--steel); font-size:11px; margin-top:3px; }
+  .cursor-read { position:absolute; bottom:14px; right:12px; padding:4px 8px; font:12px var(--mono); background:#0e1216df; pointer-events:none; }
+  .map-footer { display:flex; justify-content:space-between; gap:10px; padding:5px 10px; font-size:12px; color:var(--steel); border-top:1px solid var(--line); }
+  #imageryNote.verified { color:var(--bone); }
+  #imageryNote.verified::before { content:"\2713\00a0"; color:var(--amber); }
+  .measure-panel { min-width:0; min-height:0; display:flex; flex-direction:column; background:var(--panel); border:1px solid var(--line-hot); }
+  .distance-summary { padding:17px 16px 12px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); }
+  .eyebrow { display:block; font:13px var(--display); letter-spacing:.12em; text-transform:uppercase; color:var(--steel); }
+  #mRange { display:block; font:600 46px/1.2 var(--mono); letter-spacing:-.06em; color:var(--amber); white-space:nowrap; }
+  .result-secondary { display:flex; align-items:center; gap:12px; flex-wrap:wrap; flex-basis:100%; font:12px var(--mono); color:var(--steel); margin-top:7px; }
+  .preview-tag { color:var(--amber); text-transform:uppercase; }
+  .primary-actions { display:grid; grid-template-columns:1fr auto; gap:8px; padding:12px; }
+  .primary-actions #mClear { grid-column:1/-1; }
+  .point-details { padding:0 12px 12px; overflow-y:auto; scrollbar-width:thin; }
+  .endpoint-form { border-top:1px solid var(--line); padding:12px 0; }
+  .endpoint-title { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .endpoint-title label { display:flex; align-items:center; gap:8px; font-size:17px; font-weight:600; }
+  .endpoint-badge { display:inline-grid; place-items:center; width:26px; height:26px; color:var(--ink); font:600 15px var(--mono); }
+  .endpoint-badge.a { border-radius:50%; background:var(--amber); }
+  .endpoint-badge.b { border-radius:2px; background:var(--b-direct); }
+  .field-help { display:block; font-size:12px; color:var(--steel); margin:8px 0 6px; }
+  .coordinate-input { display:flex; gap:6px; }
+  .coordinate-input input { min-width:0; font-size:14px; }
+  .coordinate-input button { padding:6px 9px; }
+  .normalized { font:12px var(--mono); color:var(--steel); margin-top:6px; }
+  .field-error { color:#ffada4; font-size:12px; }
+  .measure-options { display:flex; flex-wrap:wrap; gap:8px; border-top:1px solid var(--line); padding-top:10px; }
+  .measure-options label { display:flex; align-items:center; gap:8px; min-height:44px; font-size:13px; cursor:pointer; }
+  .secondary-actions { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; }
+  .secondary-actions button { flex:1; font-size:11px; }
+  .map-help,.saved-pairs { border-top:1px solid var(--line); font-size:13px; color:var(--steel); }
+  summary { cursor:pointer; padding:12px 0; min-height:44px; }
+  summary:focus-visible { outline:2px solid var(--amber); outline-offset:2px; }
+  .map-help p { margin:0 0 10px; }
+  .saved-pair { display:flex; gap:6px; margin-bottom:8px; }
+  .saved-pair button:first-child { flex:1; text-align:left; }
+  .measure-status { margin:auto 0 0; padding:9px 12px; border-top:1px solid var(--line); font-size:12px; line-height:1.4; color:var(--steel); }
+  #pointToggle { display:none; }
+  dialog { width:min(1100px,calc(100% - 24px)); max-height:calc(100dvh - 24px); background:var(--ground); color:var(--bone); border:1px solid var(--line-hot); padding:18px; }
+  dialog::backdrop { background:#05090dce; }
+  .details-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; position:sticky; top:-18px; background:var(--ground); z-index:3; border-bottom:1px solid var(--line); padding:8px 0 12px; }
+  .details-heading h2 { margin:0; font:600 22px var(--display); }
+  dialog .station { margin-top:10px; }
+  dialog .notes { max-width:85ch; }
+  dialog .imgbar { margin-top:14px; }
+  @media (max-width: 800px) {
+    .shell { padding:8px 8px max(8px,env(safe-area-inset-bottom)); gap:8px; }
+    .workspace { grid-template-columns: minmax(0,1fr) 300px; gap:8px; }
+    .brand { flex-direction:column; gap:4px; margin-right:0; }
+    .mark { font-size:22px; }
+    .mast h1 { font-size:13px; }
+    .terrain-picker select { width:132px; }
+    #mRange { font-size:40px; }
+    .cursor-read { display:none; }
+  }
+  @media (max-width: 640px) {
+    .shell { gap:6px; padding-top:6px; }
+    .mast { padding-bottom:6px; flex-wrap:nowrap; gap:5px; }
+    .brand { flex:none; }
+    .mark { font-size:19px; }
+    .mast h1 { font-size:11px; letter-spacing:.04em; }
+    .terrain-picker select { width:116px; font-size:13px; padding:6px; }
+    .mast .spacer { display:none; }
+    .mast button { padding:6px 8px; font-size:11px; }
+    #fullscreenBtn { display:none; }
+    #detailsOpen { margin-left:auto; }
+    .workspace { display:flex; flex-direction:column; gap:6px; }
+    .map-panel { flex:1; min-height:150px; }
+    .map-toolbar { padding:5px; gap:8px; }
+    .map-toolbar button { padding:6px 10px; }
+    .map-toolbar p { font-size:12px; }
+    .map-footer { font-size:10px; padding:3px 6px; }
+    .map-zoom { right:8px; top:26px; }
+    .map-scale { bottom:8px; left:8px; }
+    .measure-panel { flex:none; max-height:59%; overflow:hidden; }
+    .distance-summary { padding:8px 12px; }
+    #mRange { font-size:34px; }
+    .eyebrow { font-size:11px; }
+    .result-secondary { margin-top:2px; font-size:11px; }
+    #mMils { display:none; }
+    #pointToggle { display:block; }
+    .primary-actions { display:flex; padding:8px; gap:6px; }
+    .primary-actions button { padding:6px 8px; font-size:11px; }
+    .primary-actions #mClear { flex:1; }
+    .point-details { min-height:0; }
+    .point-details:not(.is-open) { display:none; }
+    .measure-status { display:none; }
+    .distance-summary,.primary-actions { flex:none; }
+    dialog { padding:12px; }
+  }
+
 </style>
 
 <div class="shell">
-  <div class="mast">
-    <div class="mark">Wardogs</div>
-    <h1>Range Plot</h1>
+  <header class="mast">
+    <div class="brand"><span class="mark">Wardogs</span><h1>Distance map</h1></div>
+    <label class="terrain-picker"><span class="sr-only">Terrain</span><select id="mapSel" aria-label="Which map you are playing"><option value="bakurani">Bakurani</option><option value="ozeti">Ozeti</option><option value="zestafona">Zestafona</option></select></label>
     <div class="spacer"></div>
-  </div>
+    <button type="button" class="ghost" id="detailsOpen">Details</button>
+    <button type="button" class="ghost" id="fullscreenBtn" aria-label="Enter fullscreen">Fullscreen</button>
+  </header>
 
+  <main class="workspace">
+    <section class="map-panel" aria-label="Distance map">
+      <div class="map-toolbar">
+        <button type="button" id="modeMeasure" aria-pressed="true">Measure</button>
+        <p id="mapPrompt">Click your start point, then your destination.</p>
+      </div>
+      <div class="board-wrap" id="boardWrap">
+        <div class="board-frame">
+          <svg id="board" class="board" viewBox="0 0 1000 1000" tabindex="0" role="region" aria-roledescription="interactive map" aria-label="Terrain map. Click two locations to measure. Arrow keys pan; plus and minus zoom; Enter places a point at the crosshair." aria-describedby="mapPrompt">
+            <defs><clipPath id="boardClip"><rect x="0" y="0" width="1000" height="1000"/></clipPath>
+              <filter id="gameStyle" color-interpolation-filters="sRGB">
+                <feColorMatrix id="gsSat" type="saturate" values="0.08"/>
+                <feComponentTransfer>
+                  <feFuncR id="gsFuncR" type="linear" slope="1" intercept="0"/>
+                  <feFuncG id="gsFuncG" type="linear" slope="1" intercept="0"/>
+                  <feFuncB id="gsFuncB" type="linear" slope="1" intercept="0"/>
+                </feComponentTransfer>
+              </filter></defs>
+            <g clip-path="url(#boardClip)"><image id="bgImg" preserveAspectRatio="none"></image><g id="gridLayer"></g><g id="markLayer"></g><g id="crosshairLayer"></g></g>
+          </svg>
+          <div class="map-zoom" role="group" aria-label="Map navigation">
+            <button type="button" class="ghost" id="zoomIn" aria-label="Zoom in">+</button>
+            <button type="button" class="ghost" id="zoomOut" aria-label="Zoom out">−</button>
+            <button type="button" class="ghost" id="zoomFit" aria-label="Fit whole map">Fit map</button>
+          </div>
+          <div class="north" aria-label="North up">↑ <strong>N</strong></div>
+          <div class="map-scale"><span id="scaleText">1,000 m</span><span id="scaleBar"></span><span id="gridSpacing">Grid 1,000 m</span></div>
+          <div class="cursor-read" id="cursorRead">Drag to pan · scroll to zoom</div>
+        </div>
+      </div>
+      <div class="map-footer"><span id="imageryNote">Terrain overview · alignment not yet verified in game</span><span id="zoomLevel">1×</span></div>
+    </section>
+
+    <aside class="measure-panel" aria-label="Measurement">
+      <div class="distance-summary">
+        <div><span class="eyebrow" id="resultLabel">Straight-line distance</span><output id="mRange" aria-live="off">— m</output></div>
+        <button type="button" id="pointToggle" class="ghost" aria-controls="pointDetails" aria-expanded="false">Coordinates</button>
+        <div class="result-secondary"><span id="mBrg">Choose A and B</span><span id="mMils"></span><span class="preview-tag" id="previewTag" hidden>Preview</span></div>
+      </div>
+      <div class="primary-actions"><button type="button" id="mClear">New measurement</button><button type="button" class="ghost" id="fitMeasure">Fit A + B</button><button type="button" class="ghost" id="mUndo">Undo</button></div>
+      <div id="pointDetails" class="point-details">
+        <form id="pointAForm" class="endpoint-form">
+          <div class="endpoint-title"><label for="coordA"><span class="endpoint-badge a">A</span> From</label><button type="button" id="setA" class="ghost" aria-pressed="false">Set on map</button></div>
+          <label class="field-help" for="coordA">Game coordinates · paste the whole chat line</label>
+          <div class="coordinate-input"><input type="text" id="coordA" autocomplete="off" spellcheck="false" placeholder="x98.43, y110.38" aria-describedby="errorA normalizedA"><button type="submit" class="ghost" aria-label="Apply From coordinates">Apply</button></div>
+          <div id="normalizedA" class="normalized">A is not set</div><div class="field-error" id="errorA" role="alert"></div>
+        </form>
+        <form id="pointBForm" class="endpoint-form">
+          <div class="endpoint-title"><label for="coordB"><span class="endpoint-badge b">B</span> To</label><button type="button" id="setB" class="ghost" aria-pressed="false">Set on map</button></div>
+          <label class="field-help" for="coordB">Game coordinates · 1.00 = 100 meters</label>
+          <div class="coordinate-input"><input type="text" id="coordB" autocomplete="off" spellcheck="false" placeholder="x94.53, y109.03" aria-describedby="errorB normalizedB"><button type="submit" class="ghost" aria-label="Apply To coordinates">Apply</button></div>
+          <div id="normalizedB" class="normalized">B is not set</div><div class="field-error" id="errorB" role="alert"></div>
+        </form>
+        <div class="measure-options"><label><input type="checkbox" id="keepA"> Keep A for next measurement</label><button type="button" class="ghost" id="mSwap">Swap A / B</button></div>
+        <div class="secondary-actions"><button type="button" class="ghost" id="copyDistance">Copy distance</button><button type="button" class="ghost" id="copyCoords">Copy A + B</button><button type="button" class="ghost" id="mSave">Save pair</button></div>
+        <details class="map-help"><summary>Using the in-game map</summary><p>In game, zoom to a location, right-click and choose <strong>Mark Coordinates</strong>. Copy the chat line into A or B. Press Enter or Apply. Pasted coordinates always use game units.</p><p>Drag empty ground to pan; scroll or pinch to zoom. Drag A or B to edit, or use Set on map. A completed pair stays in place until you edit it.</p><p>Focus the map: arrow keys pan, +/− zoom, Enter selects at the crosshair, A/B edits an endpoint, N starts a new measurement, U undoes, F fits the pair, 0 fits the map, Escape cancels.</p><p>The terrain overview is about 6.4 meters per source pixel. For precise points use game coordinates; whole-meter results do not imply whole-meter image accuracy.</p></details>
+        <details class="saved-pairs"><summary>Saved measurements <span id="savedCount">0</span></summary><div id="savedPairs"></div></details>
+      </div>
+      <p id="measureStatus" class="measure-status" role="status" aria-live="polite">Choose two locations on the map.</p>
+    </aside>
+  </main>
+  <dialog id="detailsDialog" aria-labelledby="detailsTitle">
+    <div class="details-heading"><h2 id="detailsTitle">Map details &amp; advanced tools</h2><button type="button" class="ghost" id="detailsClose">Close</button></div>
+    <div class="modebar"><span>Place on map</span><button type="button" class="ghost" id="modeMarker" aria-pressed="false">Marker</button><button type="button" class="ghost" id="modeObs" aria-pressed="false">Observer</button><button type="button" class="ghost" id="modeGun" aria-pressed="false">Gun</button></div>
   <div class="station">
     <div class="row">
       <div class="who">Observer</div>
@@ -478,6 +806,20 @@
     </div>
   </div>
 
+    <div class="imgbar">
+      <input type="file" id="bgFile" accept="image/*" class="hide">
+      <button type="button" class="ghost" id="bgPick">Map image</button>
+      <button type="button" class="ghost" id="bgAdjust" aria-pressed="false" hidden>Adjust</button>
+      <button type="button" class="ghost" id="bgShip" hidden>Shipped map</button>
+      <button type="button" class="ghost" id="bgStyle" aria-pressed="true" hidden>Game style</button>
+      <button type="button" class="ghost" id="bgDrop" hidden>Remove</button>
+      <label class="fade" id="bgFadeWrap" hidden>
+        <span class="lbl">Fade</span>
+        <input type="range" id="bgFade" min="15" max="100" step="5" aria-label="Map image opacity">
+      </label>
+      <div class="spacer"></div>
+      <span class="hint msg" id="bgMsg">Drop or paste a screenshot of the in-game map, then Adjust to line it up with the grid</span>
+    </div>
   <div class="split">
     <div class="panel">
       <div class="panel-head"><h2>Plot</h2><div class="spacer"></div><span class="hint" id="plotHint">You at center &middot; north up</span></div>
@@ -533,7 +875,12 @@
   <div class="notes">
     <h3>Calibration</h3>
     <p>One grid square is <strong>1 km</strong> and the in-game readout is in hundreds of metres, so <code>x72.88 / y105.33</code> is 7288 m east, 10533 m north. Y increases northward — grid 12 sits above grid 10. The whole terrain runs 0 to 163.84 on both axes, 16.384 km a side.</p>
-    <p>Bearings are grid north, clockwise, with mils on the 6400-per-circle scale — the same scale the gun sights use. Markers are kept in this browser only.</p>
+    <p>Bearings are grid north, clockwise, with mils on the 6400-per-circle scale — the same scale the gun sights use. The board's edge scale is in those same readout numbers. Markers are kept in this browser only.</p>
+
+    <h3>The map</h3>
+    <p>The board is the whole terrain square in plan view. <strong>Measure</strong> pins two points and gives you the range between them; <strong>Marker</strong>, <strong>Observer</strong> and <strong>Gun</strong> drop that thing where you click. Anything already on the board can be dragged, drag empty ground to pan, scroll to zoom. Each map keeps its own positions, markers and image, so Ozeti's targets never turn up on Bakurani.</p>
+    <p>Each map ships a plan-view render of its terrain. It covers exactly the square the board draws, so it is pinned corner to corner and needs no lining up: <strong>Fade</strong> takes it back under the grid, <strong>Remove</strong> clears it, <strong>Shipped map</strong> puts it back where it belongs. The renders are downscaled hard to keep the page quick, so they are for recognising ground, not for reading it.</p>
+    <p>To use your own instead, drop or paste a screenshot of the in-game map, then use <strong>Adjust</strong> to drag and scale it until its grid sits on the board's grid. It is stored in this browser only, and alignment by eye is exactly as accurate as you make it: the numbers come from where you click, so a sloppily placed image gives sloppy ranges. The grid and the coordinate readout are the truth, the picture is a convenience.</p>
 
     <h3>Observer and gun</h3>
     <p>With <em>Gun at a separate position</em> off, every solution is measured from you. Turn it on and the range card solves from the gun instead, with a <strong>From obs</strong> column giving your own range and bearing to the same marker — spot from one place, fire from another.</p>
@@ -545,13 +892,17 @@
     <h3>What this does not know</h3>
     <p>Every figure here is flat-ground and two-dimensional. There is no terrain height, and altitude is the biggest error term in indirect fire: the mortar reaches roughly 735 m firing 100 m downhill and only about 625 m firing 100 m uphill. None of these numbers have been published by Bulkhead — they are community measurement, and the sources disagree with each other. Fire a ranging shell; the first shell tells the truth.</p>
   </div>
+  </dialog>
 </div>
 
+<script>/* INLINE_RULER_CORE */</script>
 <script>
 (function () {
   "use strict";
 
-  var STORE = "wardogs-range-plot-v2";
+  var Core = window.WardogCore;
+  var STORE = "wardogs-range-plot-v3";
+  var STORE_V2 = "wardogs-range-plot-v2";
   var STORE_V1 = "wardogs-range-plot-v1";
   var PTS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
 
@@ -565,49 +916,188 @@
   };
   var MOA_RAD = Math.PI / (180 * 60);
 
-  var SEED_SELF = { x: 5408, y: 11569 };
-  function seedTargets() {
-    return [
-      { id: 1, name: "Tower 2", x: 7288, y: 10533 },
-      { id: 2, name: "Tower 3", x: 7036, y: 10025 }
-    ];
+  var TERRAIN = 16384;
+  var MAP_IDS = { bakurani: "Bakurani", ozeti: "Ozeti", zestafona: "Zestafona" };
+
+  /* Per-map placement record. imageExtent is where the shipped raster sits in
+     world metres; playableExtent is the boundary the game draws, which is a
+     different and smaller thing. calibration is per map on purpose: checking
+     one proves nothing about the other two, which were reduced separately.
+     See docs/MAP-REFERENCE-REVIEW.md for the method and the numbers. */
+  var MAP_DEFS = {};
+  Object.keys(MAP_IDS).forEach(function (id) {
+    MAP_DEFS[id] = { id: id, name: MAP_IDS[id], metersPerUnit: 100,
+      imageExtent: { minX: 0, maxX: TERRAIN, minY: 0, maxY: TERRAIN },
+      playableExtent: null, origin: "southwest", yDirection: "north",
+      asset: "maps/" + id + ".webp", assetVersion: "local-overview-2026-09-19",
+      calibration: "unverified", residualM: null,
+      note: "alignment not yet verified in game", verifiedLandmarks: [] };
+  });
+
+  // Ozeti: registered against an in-game overview captured 19 September 2026.
+  // Nine independent tiles spread across the playable area all matched, with
+  // no scale or rotation error detectable and a residual smaller than one
+  // pixel of the reference capture, so the corner-to-corner placement stands.
+  MAP_DEFS.ozeti.playableExtent = { minX: 5758, maxX: 14307, minY: 2181, maxY: 9956 };
+  MAP_DEFS.ozeti.calibration = "verified";
+  MAP_DEFS.ozeti.residualM = 20;
+  MAP_DEFS.ozeti.note = "aligned to the in-game map, 20 m RMS";
+  MAP_DEFS.ozeti.reference = { date: "2026-09-19", kind: "in-game overview capture",
+    method: "gradient cross-correlation, 3x3 tiles", worstTileM: 24, referencePixelM: 15.5 };
+
+  /* The in-game map is very nearly greyscale -- measured saturation 0.014 over
+     the playable area of the Ozeti capture, with a neutral channel balance --
+     and far darker than these renders, which are bright and green. Each map
+     carries its own levels because the three were reduced from different
+     sources and share no tone curve: Zestafona is flat and needs contrast,
+     Bakurani is bright and needs pulling down. Each maps that render's 25th and
+     75th luminance percentiles onto the 62 and 97 measured from the game --
+     quartiles rather than the far tails, so Bakurani's snow caps and the water
+     do not drag the whole curve with them. */
+  var GAME_SAT = 0.08;      // not the measured 0.014: rivers stay findable
+  MAP_DEFS.bakurani.style  = { slope: 0.8094, intercept: -0.1906 };
+  MAP_DEFS.ozeti.style     = { slope: 0.7227, intercept: -0.2246 };
+  MAP_DEFS.zestafona.style = { slope: 1.4544, intercept: -0.5064 };
+  var DEFAULT_MAP = "bakurani";
+  // Unset stations retain an internal editing origin but never draw as known
+  // positions or produce firing solutions until both coordinates are supplied.
+  var START_SELF = { x: TERRAIN / 2, y: TERRAIN / 2 };
+
+  function blankSlot() {
+    return {
+      self: { x: START_SELF.x, y: START_SELF.y },
+      gun: { x: START_SELF.x, y: START_SELF.y },
+      gunSplit: false,
+      targets: [],
+      nextId: 1,
+      measure: null, selfSet: false, gunSet: false, camera: null, savedPairs: [], undo: [], lastComplete: null, keepA: false
+    };
   }
 
   var state = {
     unit: "readout",
     speed: 40,
+    gameStyle: true,
     weapon: "none",
+    map: DEFAULT_MAP,
+    byMap: {},
+    self: null,
+    gun: null,
     gunSplit: false,
-    self: { x: SEED_SELF.x, y: SEED_SELF.y },
-    gun: { x: SEED_SELF.x, y: SEED_SELF.y },
-    targets: seedTargets(),
-    nextId: 3
+    targets: [],
+    nextId: 1,
+    measure: null
   };
+  state.byMap[DEFAULT_MAP] = blankSlot();
+
+  function activate(id) {
+    state.map = id;
+    var d = state.byMap[id] || (state.byMap[id] = blankSlot());
+    state.self = d.self;
+    state.gun = d.gun;
+    state.gunSplit = d.gunSplit;
+    state.targets = d.targets;
+    state.nextId = d.nextId;
+    state.measure = d.measure;
+    state.selfSet = d.selfSet; state.gunSet = d.gunSet;
+    state.camera = d.camera; state.savedPairs = d.savedPairs;
+    state.undo = d.undo; state.lastComplete = d.lastComplete; state.keepA = d.keepA;
+  }
+  function stash() {
+    var d = state.byMap[state.map];
+    if (!d) return;
+    d.self = state.self;
+    d.gun = state.gun;
+    d.gunSplit = state.gunSplit;
+    d.targets = state.targets;
+    d.nextId = state.nextId;
+    d.measure = state.measure;
+    d.selfSet = state.selfSet; d.gunSet = state.gunSet;
+    d.camera = typeof view === "object" ? Core.copy(view) : state.camera;
+    d.savedPairs = state.savedPairs; d.undo = state.undo;
+    d.lastComplete = state.lastComplete; d.keepA = state.keepA;
+  }
+  function point(o, dx, dy) {
+    return o ? { x: num(o.x, dx), y: num(o.y, dy) } : { x: dx, y: dy };
+  }
+
+  function adoptSlot(s) {
+    if (!s || !s.self || !Array.isArray(s.targets)) return null;
+    var d = blankSlot();
+    d.self = point(s.self, START_SELF.x, START_SELF.y);
+    d.gun = s.gun ? point(s.gun, d.self.x, d.self.y) : { x: d.self.x, y: d.self.y };
+    d.gunSplit = s.gunSplit === true;
+    d.targets = s.targets.map(function (o, n) {
+      return { id: num(o.id, n + 1), name: String(o.name || "Marker"), x: num(o.x, 0), y: num(o.y, 0) };
+    });
+    d.nextId = d.targets.reduce(function (m, o) { return Math.max(m, o.id); }, 0) + 1;
+    function validMeasure(m) {
+      if (!m || (!Core.finitePoint(m.a) && !Core.finitePoint(m.b))) return null;
+      return { a: Core.finitePoint(m.a) ? Core.copy(m.a) : null, b: Core.finitePoint(m.b) ? Core.copy(m.b) : null };
+    }
+    d.measure = validMeasure(s.measure);
+    d.selfSet = typeof s.selfSet === "boolean" ? s.selfSet : !(d.self.x === START_SELF.x && d.self.y === START_SELF.y && !d.targets.length);
+    d.gunSet = typeof s.gunSet === "boolean" ? s.gunSet : d.gunSplit;
+    if (s.camera && Number.isFinite(s.camera.cx) && Number.isFinite(s.camera.cy) && Number.isFinite(s.camera.span) && s.camera.span > 0) {
+      d.camera = { cx: Math.max(0, Math.min(TERRAIN, s.camera.cx)), cy: Math.max(0, Math.min(TERRAIN, s.camera.cy)), span: Math.max(30, Math.min(TERRAIN * 1.15, s.camera.span)) };
+    }
+    d.savedPairs = (Array.isArray(s.savedPairs) ? s.savedPairs : []).filter(function (m) { return Core.finitePoint(m.a) && Core.finitePoint(m.b); }).slice(0, 100).map(function (m, i) { return { id: String(m.id || i), name: String(m.name || "Measurement " + (i + 1)), a: Core.copy(m.a), b: Core.copy(m.b) }; });
+    d.undo = (Array.isArray(s.undo) ? s.undo : []).slice(-30).map(validMeasure);
+    d.lastComplete = validMeasure(s.lastComplete) || (d.measure && d.measure.a && d.measure.b ? Core.copy(d.measure) : null);
+    d.keepA = s.keepA === true;
+    return d;
+  }
 
   function adopt(saved) {
-    if (!saved || !saved.self || !Array.isArray(saved.targets)) return;
+    if (!saved) return;
     state.unit = saved.unit === "metres" ? "metres" : "readout";
-    state.speed = Number(saved.speed) > 0 ? Number(saved.speed) : 40;
+    state.speed = num(saved.speed, 0) > 0 ? Number(saved.speed) : 40;
     state.weapon = WEAPONS[saved.weapon] ? saved.weapon : "none";
-    state.gunSplit = saved.gunSplit === true;
-    state.self = { x: Number(saved.self.x) || 0, y: Number(saved.self.y) || 0 };
-    state.gun = saved.gun
-      ? { x: Number(saved.gun.x) || 0, y: Number(saved.gun.y) || 0 }
-      : { x: state.self.x, y: state.self.y };
-    state.targets = saved.targets.map(function (t, i) {
-      return { id: Number(t.id) || i + 1, name: String(t.name || "Marker"), x: Number(t.x) || 0, y: Number(t.y) || 0 };
+    state.gameStyle = saved.gameStyle !== false;
+
+    // v1 had no gun and no weapon, v2 had no map: each is one map's worth of
+    // state, so it loads into the first map and behaves exactly as it did.
+    var slots = saved.byMap && typeof saved.byMap === "object" ? saved.byMap : null;
+    if (!slots) {
+      slots = {};
+      slots[DEFAULT_MAP] = saved;
+    }
+    var found = {};
+    Object.keys(slots).forEach(function (id) {
+      if (!MAP_IDS[id]) return;
+      var d = adoptSlot(slots[id]);
+      if (d) {
+        state.byMap[id] = d;
+        found[id] = true;
+      }
     });
-    state.nextId = state.targets.reduce(function (m, t) { return Math.max(m, t.id); }, 0) + 1;
+    if (MAP_IDS[saved.map] && found[saved.map]) state.map = saved.map;
   }
 
   try {
-    // v1 had no gun and no weapon; it still loads, and the gun defaults to the
-    // observer so an upgraded page behaves exactly as it did before.
-    adopt(JSON.parse(localStorage.getItem(STORE) || localStorage.getItem(STORE_V1) || "null"));
+    adopt(JSON.parse(
+      localStorage.getItem(STORE) ||
+      localStorage.getItem(STORE_V2) ||
+      localStorage.getItem(STORE_V1) || "null"
+    ));
   } catch (e) { /* storage unavailable — seeded defaults stand */ }
+  activate(state.map);
 
+  // Only the per-map slots are written out. The live copy at the top of state
+  // is a view of one of them, not a second source of truth.
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    stash();
+    try {
+      localStorage.setItem(STORE, JSON.stringify({
+        v: 4,
+        unit: state.unit,
+        speed: state.speed,
+        gameStyle: state.gameStyle,
+        weapon: state.weapon,
+        map: state.map,
+        byMap: state.byMap
+      }));
+    } catch (e) { var status = document.getElementById("measureStatus"); if (status) status.textContent = "Browser storage is full or unavailable; changes will not survive reload."; }
   }
 
   var $ = function (id) { return document.getElementById(id); };
@@ -618,7 +1108,9 @@
 
   /* ---- units: everything is stored in metres ---- */
   function toMetres(raw) {
-    var v = parseFloat(String(raw).replace(/,/g, "."));
+    var text = String(raw).trim().replace(/,/g, ".");
+    if (!/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(text)) return null;
+    var v = Number(text);
     if (!isFinite(v)) return null;
     return state.unit === "readout" ? v * 100 : v;
   }
@@ -633,38 +1125,19 @@
      The game writes a marked position into squad chat, so the fastest input is
      a paste. Accepts "x70.36 y100.25", "70.36, 100.25", "X 70.36 · Y 100.25"
      and the same with a name in front, in either axis order. */
-  function normalisePasted(s) {
-    // A comma with one or two digits after it is a decimal comma ("70,36");
-    // any other comma is separating the pair.
-    return String(s).replace(/,(\d{1,2})(?!\d)/g, ".$1").replace(/,/g, " ");
-  }
-  function parsePair(text) {
-    var s = normalisePasted(text);
-    var xy = s.match(/x\s*[:=]?\s*(-?\d+(?:\.\d+)?)[^\d+-]{0,12}y\s*[:=]?\s*(-?\d+(?:\.\d+)?)/i);
-    if (xy) return { x: parseFloat(xy[1]), y: parseFloat(xy[2]), at: s.search(/x\s*[:=]?\s*-?\d/i) };
-    var yx = s.match(/y\s*[:=]?\s*(-?\d+(?:\.\d+)?)[^\d+-]{0,12}x\s*[:=]?\s*(-?\d+(?:\.\d+)?)/i);
-    if (yx) return { x: parseFloat(yx[2]), y: parseFloat(yx[1]), at: s.search(/y\s*[:=]?\s*-?\d/i) };
-    var nums = s.match(/-?\d+(?:\.\d+)?/g);
-    if (nums && nums.length >= 2) return { x: parseFloat(nums[0]), y: parseFloat(nums[1]), at: s.indexOf(nums[0]) };
-    return null;
-  }
-  // Pasted numbers are in whatever unit the page is set to, same as typed ones.
+  function parsePair(text) { return Core.parsePair(text); }
+  // Marked chat coordinates ALWAYS use game units, including the advanced
+  // paste fields when their separate numeric inputs are set to raw metres.
   function pairToMetres(p) {
-    var k = state.unit === "readout" ? 100 : 1;
+    var k = MAP_DEFS[state.map].metersPerUnit;
     return { x: p.x * k, y: p.y * k };
   }
-
-  /* ---- solution ---- */
-  function firingPoint() { return state.gunSplit ? state.gun : state.self; }
-
-  function solve(from, t) {
-    var dE = t.x - from.x;
-    var dN = t.y - from.y;
-    var range = Math.sqrt(dE * dE + dN * dN);
-    var brg = Math.atan2(dE, dN) * 180 / Math.PI;
-    if (brg < 0) brg += 360;
-    return { range: range, brg: brg, mils: brg * 6400 / 360 };
+  function gameLabel(p) {
+    return "x" + (p.x / 100).toFixed(2) + ", y" + (p.y / 100).toFixed(2);
   }
+  function firingPoint() { return state.gunSplit ? state.gun : state.self; }
+  function firingSet() { return state.gunSplit ? state.gunSet : state.selfSet; }
+  function solve(from, t) { return Core.solve(from, t); }
 
   function weapon() { return WEAPONS[state.weapon] || WEAPONS.none; }
   function armed() { return !!weapon().max; }
@@ -712,6 +1185,7 @@
   }
 
   function solved() {
+    if (!firingSet()) return [];
     var fp = firingPoint();
     return state.targets.map(function (t) {
       var g = solve(fp, t);
@@ -720,7 +1194,7 @@
         range: g.range,
         brg: g.brg,
         mils: g.mils,
-        obs: state.gunSplit ? solve(state.self, t) : null
+        obs: state.gunSplit && state.selfSet ? solve(state.self, t) : null
       };
     }).sort(function (a, b) { return a.range - b.range; });
   }
@@ -741,6 +1215,7 @@
     cols.forEach(function (c, i) {
       var th = document.createElement("th");
       if (i === 0) th.className = "l";
+      else if (i === cols.length - 1) th.className = "kill-cell";
       th.textContent = c;
       headRow.appendChild(th);
     });
@@ -753,7 +1228,7 @@
       var td = document.createElement("td");
       td.colSpan = cols.length;
       td.className = "empty";
-      td.textContent = "No markers plotted";
+      td.textContent = firingSet() ? "No markers plotted" : "Set an observer or gun position to see marker ranges";
       tr.appendChild(td);
       rows.appendChild(tr);
       return;
@@ -773,7 +1248,20 @@
         return td;
       }
 
-      cell("name", r.t.name);
+      var nameTd = cell("name", r.t.name);
+      nameTd.contentEditable = "true";
+      nameTd.spellcheck = false;
+      nameTd.title = "Click to rename";
+      nameTd.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.preventDefault(); nameTd.blur(); }
+      });
+      nameTd.addEventListener("blur", function () {
+        var v = nameTd.textContent.replace(/\s+/g, " ").trim();
+        if (!v || v === r.t.name) { nameTd.textContent = r.t.name; return; }
+        r.t.name = v;
+        save();
+        render();
+      });
       cell("", gridLabel(r.t));
       cell("delta", "E " + sgn(r.t.x - fp.x) + "  N " + sgn(r.t.y - fp.y));
       cell("range", metres(r.range));
@@ -809,7 +1297,7 @@
       span.style.color = b.c;
       bandTd.appendChild(span);
 
-      var killTd = cell("");
+      var killTd = cell("kill-cell");
       var kill = document.createElement("button");
       kill.type = "button";
       kill.className = "kill";
@@ -838,9 +1326,10 @@
   }
 
   function renderPlot(list) {
+    if (!firingSet()) { plot.innerHTML = '<text x="200" y="200" text-anchor="middle" fill="var(--steel)" font-size="14">Observer / gun position not set</text>'; return; }
     var C = 200, R = 150;
     var fp = firingPoint();
-    var obs = state.gunSplit ? solve(fp, state.self) : null;
+    var obs = state.gunSplit && state.selfSet ? solve(fp, state.self) : null;
 
     var max = list.length ? list[list.length - 1].range : 0;
     if (obs) max = Math.max(max, obs.range);
@@ -958,16 +1447,1331 @@
     plot.innerHTML = svg.join("");
   }
 
+  /* ---- map board ----
+     The board draws the whole 16.384 km terrain square in plan view, so a
+     position can be pointed at instead of typed. World metres are turned into
+     board units (1000 across the square) in JS rather than by an SVG
+     transform, so pins, labels and hairlines keep their size at every zoom.
+
+     Each map ships a plan-view render of its terrain, cut down from the
+     full-resolution original. Those renders cover exactly the square the
+     board draws, so they are pinned to its corners rather than lined up by
+     eye. A screenshot dropped in on top replaces the shipped render for that
+     map and is kept in this browser only. */
+
+  var BOARD = 1000;
+  var MIN_SPAN = 80;
+  var GRAB = 16;
+  var BG_KEY = "wardogs-map-bg-";
+  var BG_HELP = "Drop or paste a screenshot of the in-game map, then Adjust to line it up with the grid";
+  var BG_SHIPPED = "Shipped render, pinned to the grid. Fade it back, or drop your own screenshot over it";
+
+  // Served next to the page. Each file is the whole terrain square, square and
+  // north-up, which is what makes the placement in shippedBg exact instead of
+  // eyeballed: corner to corner, no offset and no scaling to guess at.
+  var SHIPPED = {
+    bakurani: "maps/bakurani.webp",
+    ozeti: "maps/ozeti.webp",
+    zestafona: "maps/zestafona.webp"
+  };
+  // false once a render has been asked for and did not arrive - the page
+  // opened straight off disk, say, or as an Artifact with no files beside it.
+  var shipOk = {};
+  function shippedBg(id) {
+    if (!SHIPPED[id] || shipOk[id] === false) return null;
+    return { src: SHIPPED[id], ar: 1, ox: 0, oy: TERRAIN, w: TERRAIN, fade: 0.85, shipped: true };
+  }
+
+  var board = $("board"), bgImg = $("bgImg");
+  var gridLayer = $("gridLayer"), markLayer = $("markLayer");
+  var mapSel = $("mapSel"), cursorRead = $("cursorRead");
+  var boardWrap = $("boardWrap"), bgFile = $("bgFile"), bgFadeEl = $("bgFade"), bgMsg = $("bgMsg");
+
+  var view = { cx: TERRAIN / 2, cy: TERRAIN / 2, span: TERRAIN };
+  var mode = "measure";
+  var bg = null;
+  var drag = null;
+  var pending = 0, pendingFull = false;
+
+  function num(v, d) { var n = Number(v); return isFinite(n) ? n : d; }
+
+  /* ---- board geometry ---- */
+  // The viewport is a rectangle, so the viewBox tracks its pixel size and one
+  // scale serves both axes; span is the world distance across the shorter one.
+  // Stretching a square viewBox to fit would tilt every bearing the ruler gives.
+  var size = { w: BOARD, h: BOARD };
+  function zoomK() { return Core.scale(view, size); }
+  function toBoard(w) { return Core.toScreen(w, view, size); }
+  function toWorld(p) { return Core.toWorld(p, view, size); }
+  // One board unit is one CSS pixel once this has run, which is what keeps
+  // marker sizes and grab radii constant at every zoom.
+  function measureBoard() {
+    var r = board.getBoundingClientRect();
+    // A hidden tab reports nothing. Keeping the last size it had is better
+    // than adopting a fake one and putting every later click in the wrong place.
+    if (!(r.width > 0) || !(r.height > 0)) return false;
+    var w = Math.max(80, Math.round(r.width)), h = Math.max(80, Math.round(r.height));
+    if (w === size.w && h === size.h) return false;
+    size.w = w;
+    size.h = h;
+    board.setAttribute("viewBox", "0 0 " + w + " " + h);
+    var clip = document.querySelector("#boardClip rect");
+    if (clip) { clip.setAttribute("width", String(w)); clip.setAttribute("height", String(h)); }
+    return true;
+  }
+  // Metres are what everything downstream expects, and a click is never more
+  // precise than a metre however far in you zoom.
+  function snapWorld(w) {
+    return {
+      x: Math.max(0, Math.min(TERRAIN, Math.round(w.x))),
+      y: Math.max(0, Math.min(TERRAIN, Math.round(w.y)))
+    };
+  }
+  function eventPoint(e) {
+    var r = board.getBoundingClientRect();
+    // Same reason: dividing by an unmeasurable width would send the point off
+    // to a corner. The centre of the view is at least where the player is looking.
+    if (!(r.width > 0) || !(r.height > 0)) return { x: size.w / 2, y: size.h / 2 };
+    return { x: (e.clientX - r.left) * size.w / r.width, y: (e.clientY - r.top) * size.h / r.height };
+  }
+  // Keeping the centre on the terrain means you can always find your way back.
+  function clampView() {
+    view.cx = Math.max(0, Math.min(TERRAIN, view.cx));
+    view.cy = Math.max(0, Math.min(TERRAIN, view.cy));
+  }
+  function setSpan(next, anchor) {
+    var s = Math.max(MIN_SPAN, Math.min(TERRAIN * 1.15, next));
+    if (anchor) {
+      var before = toWorld(anchor);
+      view.span = s;
+      var after = toWorld(anchor);
+      view.cx += before.x - after.x;
+      view.cy += before.y - after.y;
+    } else {
+      view.span = s;
+    }
+    clampView();
+    requestDraw();
+    saveViewSoon();
+  }
+
+  // A pan or a zoom is worth remembering per map, but not worth a storage
+  // write per frame.
+  var viewTimer = 0;
+  function saveViewSoon() {
+    if (viewTimer) clearTimeout(viewTimer);
+    viewTimer = setTimeout(function () { viewTimer = 0; save(); }, 500);
+  }
+  function applyCamera() {
+    var c = state.camera;
+    if (c && Number.isFinite(c.cx) && Number.isFinite(c.cy) && Number.isFinite(c.span) && c.span > 0) {
+      view = { cx: c.cx, cy: c.cy, span: Math.max(MIN_SPAN, Math.min(TERRAIN * 1.15, c.span)) };
+    } else {
+      view = { cx: TERRAIN / 2, cy: TERRAIN / 2, span: TERRAIN };
+    }
+    clampView();
+  }
+
+  function requestDraw(full) {
+    if (full) pendingFull = true;
+    if (pending) return;
+    pending = requestAnimationFrame(function () {
+      pending = 0;
+      if (pendingFull) { pendingFull = false; render(); } else { drawBoard(); paintMeasure(); paintScale(); }
+    });
+  }
+
+  /* ---- svg helpers ---- */
+  function svgLine(x1, y1, x2, y2, col, w, op, dash) {
+    return '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) +
+      '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) +
+      '" stroke="' + col + '" stroke-width="' + w +
+      '" stroke-opacity="' + (op === undefined ? 1 : op) + '"' +
+      (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>';
+  }
+  function svgDot(p, r, fill, stroke, op, dash) {
+    return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + r +
+      '" fill="' + (fill || "none") + '"' +
+      (stroke ? ' stroke="' + stroke + '" stroke-width="1" stroke-opacity="' + (op === undefined ? 1 : op) + '"' : '') +
+      (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>';
+  }
+  // A dark halo under every label, because the background may be a screenshot
+  // and unreadable text is worse than no text.
+  function svgText(x, y, s, o) {
+    o = o || {};
+    return '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) +
+      '" text-anchor="' + (o.anchor || "start") +
+      '" font-family="' + (o.mono ? "IBM Plex Mono, monospace" : "Saira Condensed, sans-serif") +
+      '" font-size="' + (o.size || 12) + '" font-weight="' + (o.weight || 600) +
+      '" fill="' + (o.fill || "var(--steel-dim)") +
+      '" stroke="var(--ink)" stroke-width="3" stroke-opacity="0.8" paint-order="stroke">' +
+      esc(s) + '</text>';
+  }
+
+  /* ---- drawing ---- */
+  var gridStep = 1000;
+  function drawGrid() {
+    var s = [];
+    var tl = toBoard({ x: 0, y: TERRAIN });
+    var br = toBoard({ x: TERRAIN, y: 0 });
+    var top = Math.max(tl.y, 0), bot = Math.min(br.y, size.h);
+    var left = Math.max(tl.x, 0), right = Math.min(br.x, size.w);
+    var box = 'x="' + tl.x.toFixed(1) + '" y="' + tl.y.toFixed(1) +
+      '" width="' + Math.max(0, br.x - tl.x).toFixed(1) +
+      '" height="' + Math.max(0, br.y - tl.y).toFixed(1) + '"';
+
+    if (!bg) s.push('<rect ' + box + ' fill="var(--ground)" fill-opacity="0.45"/>');
+
+    // 1 km squares always, then 100 m and 10 m as each becomes wide enough to
+    // read. The step in force is printed next to the scale bar, so zooming can
+    // never change what the player thinks a square is worth.
+    var k = zoomK();
+    gridStep = k * 10 >= 9 ? 10 : (k * 100 >= 7 ? 100 : 1000);
+    for (var m = 0; m <= TERRAIN + 0.5; m += gridStep) {
+      var km = m % 1000 === 0, hm = m % 100 === 0;
+      var wide = km ? 1 : (hm ? 0.7 : 0.5);
+      var op = km ? 0.8 : (hm ? 0.3 : 0.16);
+      if (bot > top) {
+        var vx = toBoard({ x: m, y: 0 }).x;
+        if (vx >= -1 && vx <= size.w + 1) s.push(svgLine(vx, top, vx, bot, "var(--line)", wide, op));
+      }
+      if (right > left) {
+        var hy = toBoard({ x: 0, y: m }).y;
+        if (hy >= -1 && hy <= size.h + 1) s.push(svgLine(left, hy, right, hy, "var(--line)", wide, op));
+      }
+    }
+
+    // Edge scale in the numbers the game prints down its own map edges: the
+    // kilometre grid, 0-16 on both axes, counting north upward. Checked
+    // against an in-game capture. The readout coordinate is in hundredths of
+    // these, so x100.29 sits just past the line marked 10.
+    for (var r = 0; r <= 160; r += 10) {
+      var mm = r * 100;
+      var km = String(r / 10);
+      var lx = toBoard({ x: mm, y: 0 }).x;
+      if (lx > 16 && lx < size.w - 4) s.push(svgText(lx + 3, 13, km, { size: 10, weight: 500, mono: true }));
+      var ly = toBoard({ x: 0, y: mm }).y;
+      // The north badge occupies the top-left corner, and a number printed
+      // underneath it is a number nobody can read.
+      if (ly > 54 && ly < size.h - 4) s.push(svgText(4, ly - 3, km, { size: 10, weight: 500, mono: true }));
+    }
+
+    s.push('<rect ' + box + ' fill="none" stroke="var(--line-hot)" stroke-width="1.5"/>');
+
+    // The playable boundary is not the edge of the terrain, and the difference
+    // matters: ground outside it is drawn, and is not somewhere you can stand.
+    // Only drawn where it has actually been checked against the game.
+    var play = MAP_DEFS[state.map].playableExtent;
+    if (play && MAP_DEFS[state.map].calibration === "verified") {
+      var pa = toBoard({ x: play.minX, y: play.maxY });
+      var pb = toBoard({ x: play.maxX, y: play.minY });
+      s.push('<rect x="' + pa.x.toFixed(1) + '" y="' + pa.y.toFixed(1) +
+        '" width="' + Math.max(0, pb.x - pa.x).toFixed(1) +
+        '" height="' + Math.max(0, pb.y - pa.y).toFixed(1) +
+        '" fill="none" stroke="var(--amber)" stroke-width="1.2" stroke-opacity="0.5" stroke-dasharray="9 6"/>');
+      if (pb.x - pa.x > 190 && pa.y > -20) {
+        s.push(svgText(pa.x + 7, pa.y + 15, "PLAYABLE AREA",
+          { fill: "var(--amber)", size: 10, weight: 600, mono: true }));
+      }
+    }
+    gridLayer.innerHTML = s.join("");
+  }
+
+  function drawStation(p, col, label) {
+    return svgDot(p, 13, null, col, 0.4) +
+      '<path d="M' + p.x.toFixed(1) + ' ' + (p.y - 8).toFixed(1) +
+      ' L' + (p.x + 7).toFixed(1) + ' ' + (p.y + 6).toFixed(1) +
+      ' L' + p.x.toFixed(1) + ' ' + (p.y + 2).toFixed(1) +
+      ' L' + (p.x - 7).toFixed(1) + ' ' + (p.y + 6).toFixed(1) + ' Z" fill="' + col + '"/>' +
+      svgText(p.x + 14, p.y + 4, label, { fill: col, size: 12 });
+  }
+
+  function drawMarks() {
+    var s = [];
+    var fp = firingPoint();
+    var f = toBoard(fp);
+    var k = zoomK();
+    var w = weapon();
+
+    // The envelope is a ring on the ground, so on a map it is a ring.
+    if (w.max && firingSet()) {
+      [w.min, w.max].forEach(function (rad) {
+        s.push(svgDot(f, (rad * k).toFixed(1), null, "var(--b-close)", 0.4, "4 4"));
+      });
+    }
+
+    state.targets.forEach(function (t) {
+      var p = toBoard(t);
+      var col = firingSet() ? envelopeOf(solve(fp, t).range).c : "var(--steel)";
+      if (firingSet()) s.push(svgLine(f.x, f.y, p.x, p.y, col, 1, 0.3));
+      s.push(svgDot(p, 5, col));
+      s.push(svgDot(p, 9, null, col, 0.55));
+      s.push(svgText(p.x + 13, p.y + 4, t.name, { fill: "var(--bone)", size: 13 }));
+    });
+
+    // A station that has never been given a position is not drawn at all: a
+    // marker parked in the middle of the map reads as a known location.
+    if (state.gunSplit) {
+      if (state.selfSet) s.push(drawStation(toBoard(state.self), "var(--amber)", "OBS"));
+      if (state.gunSet) s.push(drawStation(f, "var(--b-direct)", "GUN"));
+    } else if (state.selfSet) {
+      s.push(drawStation(f, "var(--amber)", "YOU"));
+    }
+
+    s.push(measureSvg());
+    markLayer.innerHTML = s.join("");
+  }
+
+  /* ---- the ruler on the board ----
+     Endpoint marks and their labels are sized in board units, which are CSS
+     pixels, so they keep the same size and the same grab radius however far in
+     the camera is. A is a disc and B a square, matching the panel badges. */
+  function endpointSvg(p, which, draft) {
+    var q = toBoard(p);
+    var col = which === "a" ? "var(--amber)" : "var(--b-direct)";
+    var op = draft ? 0.55 : 1;
+    var body = which === "a"
+      ? '<circle cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) + '" r="6.5" fill="' + col +
+        '" fill-opacity="' + op + '" stroke="var(--ink)" stroke-width="2"/>'
+      : '<rect x="' + (q.x - 6).toFixed(1) + '" y="' + (q.y - 6).toFixed(1) +
+        '" width="12" height="12" fill="' + col + '" fill-opacity="' + op +
+        '" stroke="var(--ink)" stroke-width="2"/>';
+    return svgDot(q, 14, null, col, draft ? 0.35 : 0.6, draft ? "3 3" : null) + body +
+      svgText(q.x + 17, q.y + 5, which.toUpperCase(),
+        { fill: col, size: 14, weight: 700, mono: true });
+  }
+
+  function measureSvg() {
+    var m = state.measure;
+    if (!m) return "";
+    var out = [];
+    var onA = Core.finitePoint(m.a), onB = Core.finitePoint(m.b);
+    var tip = onA && !onB && preview ? preview : null;
+    var far = onB ? m.b : tip;
+    if (onA && far) {
+      var pa = toBoard(m.a), pb = toBoard(far);
+      out.push(svgLine(pa.x, pa.y, pb.x, pb.y, "var(--ink)", 5, 0.5));
+      out.push(svgLine(pa.x, pa.y, pb.x, pb.y, "var(--amber)", 2, 0.95, tip ? "7 5" : null));
+      // Pushed off the line and held inside the viewport, so the number never
+      // sits under an endpoint or slides off the edge of the board.
+      var dx = pb.x - pa.x, dy = pb.y - pa.y, len = Math.hypot(dx, dy) || 1;
+      var lx = (pa.x + pb.x) / 2 - dy / len * 15;
+      var ly = (pa.y + pb.y) / 2 + dx / len * 15;
+      out.push(svgText(Math.max(50, Math.min(size.w - 50, lx)),
+        Math.max(20, Math.min(size.h - 12, ly)),
+        metres(solve(m.a, far).range),
+        { fill: "var(--amber)", size: 15, weight: 700, anchor: "middle", mono: true }));
+    }
+    if (onA) out.push(endpointSvg(m.a, "a", false));
+    if (onB) out.push(endpointSvg(m.b, "b", false));
+    else if (tip) out.push(endpointSvg(tip, "b", true));
+    return out.join("");
+  }
+
+  // Keyboard users get a crosshair to aim with, because Enter has to place a
+  // point somewhere and the centre of the view is the only honest answer.
+  function drawCrosshair() {
+    if (!aiming) { crosshairLayer.innerHTML = ""; return; }
+    var cx = size.w / 2, cy = size.h / 2;
+    crosshairLayer.innerHTML =
+      svgLine(cx - 16, cy, cx - 5, cy, "var(--bone)", 1.5, 0.95) +
+      svgLine(cx + 5, cy, cx + 16, cy, "var(--bone)", 1.5, 0.95) +
+      svgLine(cx, cy - 16, cx, cy - 5, "var(--bone)", 1.5, 0.95) +
+      svgLine(cx, cy + 5, cx, cy + 16, "var(--bone)", 1.5, 0.95) +
+      svgDot({ x: cx, y: cy }, 20, null, "var(--bone)", 0.45, "3 4");
+  }
+
+  function drawBoard() {
+    if (bg) {
+      var p = toBoard({ x: bg.ox, y: bg.oy });
+      var k = zoomK();
+      bgImg.setAttribute("x", p.x.toFixed(1));
+      bgImg.setAttribute("y", p.y.toFixed(1));
+      bgImg.setAttribute("width", Math.max(1, bg.w * k).toFixed(1));
+      bgImg.setAttribute("height", Math.max(1, (bg.w / bg.ar) * k).toFixed(1));
+      bgImg.setAttribute("opacity", String(bg.fade));
+      bgImg.style.display = "";
+    } else {
+      bgImg.style.display = "none";
+    }
+    drawGrid();
+    drawMarks();
+    drawCrosshair();
+  }
+
+  /* ---- what a click does ---- */
+  var MODE_BTN = { measure: "modeMeasure", marker: "modeMarker", observer: "modeObs", gun: "modeGun" };
+
+  function setMode(m) {
+    mode = m;
+    if (m !== "measure" && typeof arming !== "undefined" && arming) setArm(null);
+    Object.keys(MODE_BTN).forEach(function (key) {
+      $(MODE_BTN[key]).setAttribute("aria-pressed", String(key === m));
+    });
+    $("bgAdjust").setAttribute("aria-pressed", String(m === "image"));
+    board.classList.toggle("move", m === "image");
+  }
+
+  function placeClick(raw) {
+    var w = snapWorld(raw);
+    if (mode === "marker") {
+      var name = newName.value.trim();
+      newName.value = "";
+      pushMarker(name, w.x, w.y);
+      return;
+    }
+    if (mode === "observer") {
+      state.self.x = w.x;
+      state.self.y = w.y;
+      state.selfSet = true;
+      syncInputs();
+      save();
+      render();
+      return;
+    }
+    if (mode === "gun") {
+      // Putting a gun on the map is the whole point of a separate gun, so
+      // turn the split on rather than dropping the click on the floor.
+      state.gunSplit = true;
+      state.gun.x = w.x;
+      state.gun.y = w.y;
+      state.gunSet = true;
+      syncInputs();
+      save();
+      render();
+      return;
+    }
+
+    // Measuring. Set on map, if it is armed, wins: the player has just said
+    // which endpoint this click is for.
+    if (arming) {
+      var which = arming;
+      setArm(null);
+      commit(Core.withEndpoint(state.measure, which, w));
+      return;
+    }
+    var m = state.measure;
+    if (!m || !Core.finitePoint(m.a)) { commit(Core.withEndpoint(m, "a", w)); return; }
+    if (!Core.finitePoint(m.b)) { commit(Core.withEndpoint(m, "b", w)); return; }
+    // The pair is finished. Keep A moves B and leaves A alone; otherwise this
+    // starts a fresh measurement, which the prompt says before the click and
+    // Undo takes back after it.
+    if (state.keepA) { commit(Core.withEndpoint(m, "b", w)); return; }
+    commit({ a: { x: w.x, y: w.y }, b: null });
+  }
+
+  /* ---- dragging pins ---- */
+  function pinList() {
+    var out = [];
+    state.targets.forEach(function (t) { out.push({ ref: t, kind: "target" }); });
+    if (state.selfSet) out.push({ ref: state.self, kind: "station" });
+    if (state.gunSplit && state.gunSet) out.push({ ref: state.gun, kind: "station" });
+    if (state.measure) {
+      if (Core.finitePoint(state.measure.a)) out.push({ ref: state.measure.a, kind: "measure", which: "a" });
+      if (Core.finitePoint(state.measure.b)) out.push({ ref: state.measure.b, kind: "measure", which: "b" });
+    }
+    return out;
+  }
+  // GRAB is in board units, which are CSS pixels, so the target stays the same
+  // size on screen at every zoom.
+  function hitPin(p) {
+    var best = null, bd = GRAB;
+    pinList().forEach(function (o) {
+      var q = toBoard(o.ref);
+      var d = Math.sqrt((q.x - p.x) * (q.x - p.x) + (q.y - p.y) * (q.y - p.y));
+      // The ruler wins a tie against a marker underneath it: it is the thing
+      // this page is for.
+      if (o.kind === "measure") d -= 4;
+      if (d <= bd) { bd = d; best = o; }
+    });
+    return best;
+  }
+
+  // Two fingers is a pinch, never a placement: the moment a second pointer
+  // lands, any drag in progress is abandoned and the gesture takes over.
+  var pointers = new Map();
+  var pinch = null;
+  function pointerPair() {
+    var out = [];
+    pointers.forEach(function (v) { out.push(v); });
+    return out;
+  }
+  function dropPointer(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+  }
+  function cancelDrag() {
+    if (drag && drag.kind === "pin" && drag.pin.kind === "measure" && drag.before !== undefined) {
+      state.measure = drag.before ? Core.copy(drag.before) : null;
+    }
+    drag = null;
+    preview = null;
+    requestDraw(true);
+  }
+
+  board.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    var p = eventPoint(e);
+    try { board.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    pointers.set(e.pointerId, p);
+    if (pointers.size > 1) {
+      drag = null;
+      preview = null;
+      if (pointers.size === 2) {
+        var two = pointerPair();
+        pinch = {
+          d: Math.hypot(two[0].x - two[1].x, two[0].y - two[1].y) || 1,
+          span: view.span,
+          mid: { x: (two[0].x + two[1].x) / 2, y: (two[0].y + two[1].y) / 2 }
+        };
+      }
+      requestDraw();
+      return;
+    }
+    if (mode === "image" && bg) {
+      drag = { kind: "image", ox: bg.ox, oy: bg.oy };
+    } else {
+      var h = hitPin(p);
+      if (h) {
+        var w = toWorld(p);
+        drag = { kind: "pin", pin: h, dx: h.ref.x - w.x, dy: h.ref.y - w.y,
+          before: h.kind === "measure" ? Core.copy(state.measure) : undefined };
+      } else {
+        drag = { kind: "pan", cx: view.cx, cy: view.cy };
+      }
+    }
+    drag.start = p;
+    drag.click = true;
+    drag.slop = e.pointerType === "mouse" ? 4 : 12;
+  });
+
+  board.addEventListener("pointermove", function (e) {
+    var p = eventPoint(e);
+    var w = toWorld(p);
+    cursorRead.textContent = "x " + fromMetres(w.x) + "   y " + fromMetres(w.y);
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
+
+    if (pinch && pointers.size >= 2) {
+      var two = pointerPair();
+      var nd = Math.hypot(two[0].x - two[1].x, two[0].y - two[1].y) || 1;
+      var mid = { x: (two[0].x + two[1].x) / 2, y: (two[0].y + two[1].y) / 2 };
+      var k = zoomK();
+      view.cx -= (mid.x - pinch.mid.x) / k;
+      view.cy += (mid.y - pinch.mid.y) / k;
+      pinch.mid = mid;
+      setSpan(pinch.span * (pinch.d / nd), mid);
+      return;
+    }
+
+    if (!drag) {
+      // Between the first click and the second, the line follows the pointer.
+      var want = mode === "measure" && !arming && state.measure &&
+        Core.finitePoint(state.measure.a) && !Core.finitePoint(state.measure.b)
+        ? snapWorld(w) : null;
+      if ((want ? want.x + "," + want.y : "") !== (preview ? preview.x + "," + preview.y : "")) {
+        preview = want;
+        requestDraw();
+      }
+      return;
+    }
+    if (preview) { preview = null; requestDraw(); }
+    if (Math.abs(p.x - drag.start.x) + Math.abs(p.y - drag.start.y) > drag.slop) drag.click = false;
+    if (drag.click) return;
+    if (drag.kind === "pan") {
+      var k = zoomK();
+      view.cx = drag.cx - (p.x - drag.start.x) / k;
+      view.cy = drag.cy + (p.y - drag.start.y) / k;
+      clampView();
+      requestDraw();
+    } else if (drag.kind === "image") {
+      var s0 = toWorld(drag.start);
+      bg.ox = drag.ox + (w.x - s0.x);
+      bg.oy = drag.oy + (w.y - s0.y);
+      requestDraw();
+    } else {
+      var n = snapWorld({ x: w.x + drag.dx, y: w.y + drag.dy });
+      drag.pin.ref.x = n.x;
+      drag.pin.ref.y = n.y;
+      requestDraw(true);
+    }
+  });
+
+  function endDrag(e) {
+    if (!drag) return;
+    var d = drag;
+    drag = null;
+    try { board.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    if (d.click) {
+      if (d.kind === "pan") placeClick(toWorld(eventPoint(e)));
+      return;
+    }
+    if (d.kind === "image") { saveBg(); return; }
+    if (d.kind === "pan") { saveViewSoon(); return; }
+    if (d.kind === "pin") {
+      // The drag moved the endpoint in place, so the snapshot taken when it
+      // started is what Undo needs.
+      if (d.pin.kind === "measure") {
+        pushUndo(d.before);
+        if (isComplete()) state.lastComplete = Core.copy(state.measure);
+      }
+      syncInputs();
+      save();
+      render();
+    }
+  }
+  board.addEventListener("pointerup", function (e) { dropPointer(e); endDrag(e); });
+  board.addEventListener("pointercancel", function (e) { dropPointer(e); cancelDrag(); });
+  board.addEventListener("lostpointercapture", function (e) { dropPointer(e); });
+  board.addEventListener("pointerleave", function (e) {
+    if (!drag) cursorRead.textContent = "Drag to pan · scroll to zoom";
+    if (!drag && preview && e.pointerType !== "touch") { preview = null; requestDraw(); }
+  });
+  board.addEventListener("focus", function () { aiming = true; requestDraw(); });
+  board.addEventListener("blur", function () { aiming = false; requestDraw(); });
+
+  board.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    var p = eventPoint(e);
+    var f = e.deltaY > 0 ? 1.2 : 1 / 1.2;
+    if (mode === "image" && bg) {
+      // Resize the image about the cursor, so the feature under the pointer
+      // stays put while the rest of it grows.
+      var w = toWorld(p);
+      var u = (w.x - bg.ox) / bg.w;
+      var v = (bg.oy - w.y) / (bg.w / bg.ar);
+      bg.w = Math.max(200, Math.min(TERRAIN * 6, bg.w / f));
+      bg.ox = w.x - u * bg.w;
+      bg.oy = w.y + v * (bg.w / bg.ar);
+      saveBg();
+      requestDraw();
+      return;
+    }
+    setSpan(view.span * f, p);
+  }, { passive: false });
+
+  Object.keys(MODE_BTN).forEach(function (key) {
+    $(MODE_BTN[key]).addEventListener("click", function () {
+      setMode(key);
+      // Marker, Observer and Gun live in Details, and the next thing they need
+      // is the map, so get out of its way.
+      var dlg = $("detailsDialog");
+      if (dlg.open && typeof dlg.close === "function") dlg.close();
+    });
+  });
+  $("zoomIn").addEventListener("click", function () { setSpan(view.span / 1.6); });
+  $("zoomOut").addEventListener("click", function () { setSpan(view.span * 1.6); });
+  $("zoomFit").addEventListener("click", function () {
+    view.cx = TERRAIN / 2;
+    view.cy = TERRAIN / 2;
+    setSpan(TERRAIN);
+  });
+
+  /* ---- the ruler ----
+     Four states: nothing placed, A placed and waiting for B, a finished pair,
+     and an endpoint being edited by drag or by typing. Every change to the
+     pair goes through commit(), which is what makes Undo reliable: nothing
+     rewrites state.measure behind the stack's back. */
+  var coordEl = { a: $("coordA"), b: $("coordB") };
+  var normEl = { a: $("normalizedA"), b: $("normalizedB") };
+  var errEl = { a: $("errorA"), b: $("errorB") };
+  var setBtn = { a: $("setA"), b: $("setB") };
+  var keepAEl = $("keepA");
+  var previewTag = $("previewTag"), mapPromptEl = $("mapPrompt"), statusEl = $("measureStatus");
+  var savedListEl = $("savedPairs"), savedCountEl = $("savedCount");
+  var pointDetails = $("pointDetails"), pointToggle = $("pointToggle");
+  var crosshairLayer = $("crosshairLayer");
+  var preview = null;   // the prospective B under the pointer; never stored
+  var arming = null;    // "a" or "b" while Set on map is waiting for a click
+  var aiming = false;   // the board has keyboard focus, so it shows a crosshair
+  var spoken = "";      // last thing announced, so previews stay quiet
+
+  var PROMPT = {
+    empty: "Click your start point, then your destination.",
+    "choose-a": "Click to place A, the point you are measuring from.",
+    "choose-b": "Now click your destination to finish the measurement.",
+    complete: "Done. Drag A or B to adjust, or click the map to start again."
+  };
+
+  function onA() { return !!(state.measure && Core.finitePoint(state.measure.a)); }
+  function onB() { return !!(state.measure && Core.finitePoint(state.measure.b)); }
+  function isComplete(m) {
+    m = m === undefined ? state.measure : m;
+    return !!(m && Core.finitePoint(m.a) && Core.finitePoint(m.b));
+  }
+  function mState() {
+    if (!onA()) return onB() ? "choose-a" : "empty";
+    return onB() ? "complete" : "choose-b";
+  }
+  function sameMeasure(a, b) { return JSON.stringify(a || null) === JSON.stringify(b || null); }
+
+  function pushUndo(snapshot) {
+    state.undo.push(snapshot ? Core.copy(snapshot) : null);
+    while (state.undo.length > 30) state.undo.shift();
+  }
+  function commit(next, opts) {
+    opts = opts || {};
+    if (next && !Core.finitePoint(next.a) && !Core.finitePoint(next.b)) next = null;
+    if (sameMeasure(state.measure, next)) { preview = null; requestDraw(true); return; }
+    if (opts.undoable !== false) pushUndo(state.measure);
+    state.measure = next ? Core.copy(next) : null;
+    if (isComplete()) state.lastComplete = Core.copy(state.measure);
+    preview = null;
+    save();
+    render();
+  }
+  function undo() {
+    if (!state.undo.length) return;
+    var prev = state.undo.pop();
+    state.measure = prev ? Core.copy(prev) : null;
+    if (isComplete()) state.lastComplete = Core.copy(state.measure);
+    preview = null;
+    setArm(null);
+    save();
+    render();
+  }
+  function setArm(which) {
+    arming = which === "a" || which === "b" ? which : null;
+    setBtn.a.setAttribute("aria-pressed", String(arming === "a"));
+    setBtn.b.setAttribute("aria-pressed", String(arming === "b"));
+    board.classList.toggle("arm", !!arming);
+    requestDraw(true);
+  }
+
+  /* ---- direct coordinate entry ----
+     These fields are game units whatever the advanced Metres toggle says. A
+     marked chat line is always in game units, and silently reading x98.43 as
+     98 metres would be wrong by a factor of a hundred. */
+  function showError(which, msg) {
+    errEl[which].textContent = msg || "";
+    coordEl[which].setAttribute("aria-invalid", msg ? "true" : "false");
+    coordEl[which].classList.toggle("bad", !!msg);
+  }
+  var MAX_UNITS = TERRAIN / 100;
+  function applyField(which) {
+    var raw = coordEl[which].value.trim();
+    if (!raw) {
+      showError(which, "Enter a game coordinate pair, for example x98.43, y110.38.");
+      return false;
+    }
+    var pair = Core.parsePair(raw);
+    if (!pair) {
+      showError(which, "No coordinate pair in that. Expected something like x98.43, y110.38.");
+      return false;
+    }
+    // Both coordinates are checked before either endpoint moves, so a rejected
+    // paste leaves the previous measurement exactly as it was.
+    var w = pairToMetres(pair);
+    if (w.x < 0 || w.y < 0 || w.x > TERRAIN || w.y > TERRAIN) {
+      showError(which, "Off this map — both axes run 0 to " + MAX_UNITS.toFixed(2) + ".");
+      return false;
+    }
+    showError(which, "");
+    setArm(null);
+    commit(Core.withEndpoint(state.measure, which, w));
+    return true;
+  }
+
+  ["a", "b"].forEach(function (which) {
+    var form = $(which === "a" ? "pointAForm" : "pointBForm");
+    form.addEventListener("submit", function (e) { e.preventDefault(); applyField(which); });
+    coordEl[which].addEventListener("input", function () { showError(which, ""); });
+    // A paste that already contains a readable pair is unambiguous, so it
+    // lands without a second keystroke.
+    coordEl[which].addEventListener("paste", function (e) {
+      var dt = e.clipboardData || window.clipboardData;
+      if (!dt) return;
+      var text = dt.getData("text");
+      if (!Core.parsePair(text)) return;
+      e.preventDefault();
+      coordEl[which].value = text;
+      applyField(which);
+    });
+    setBtn[which].addEventListener("click", function () {
+      setMode("measure");
+      setArm(arming === which ? null : which);
+      if (arming) board.focus();
+    });
+  });
+
+  /* ---- panel actions ---- */
+  $("mClear").addEventListener("click", function () {
+    setArm(null);
+    var keep = keepAEl.checked && onA();
+    commit(keep ? { a: Core.copy(state.measure.a), b: null } : null);
+    coordEl.b.value = "";
+    showError("a", "");
+    showError("b", "");
+  });
+  $("mUndo").addEventListener("click", undo);
+  $("mSwap").addEventListener("click", function () {
+    if (!isComplete()) return;
+    commit({ a: Core.copy(state.measure.b), b: Core.copy(state.measure.a) });
+  });
+  $("fitMeasure").addEventListener("click", fitMeasure);
+  keepAEl.addEventListener("change", function () {
+    state.keepA = keepAEl.checked;
+    save();
+    render();
+  });
+
+  function fitMeasure() {
+    var m = state.measure;
+    if (!m) return;
+    var pts = [m.a, m.b].filter(Core.finitePoint);
+    if (!pts.length) return;
+    var xs = pts.map(function (q) { return q.x; }), ys = pts.map(function (q) { return q.y; });
+    var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+    var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+    view.cx = (minX + maxX) / 2;
+    view.cy = (minY + maxY) / 2;
+    // span measures the shorter side of the viewport, so each axis has to be
+    // converted into that unit before the larger of the two wins.
+    var shortSide = Math.min(size.w, size.h);
+    var need = Math.max((maxX - minX) * shortSide / size.w, (maxY - minY) * shortSide / size.h);
+    setSpan(Math.max(MIN_SPAN, need * 1.4 || MIN_SPAN));
+  }
+
+  /* ---- clipboard ---- */
+  function copyText(text, okMsg) {
+    function byHand() {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "-1000px";
+      document.body.appendChild(ta);
+      ta.select();
+      var done = false;
+      try { done = document.execCommand("copy"); } catch (err) { done = false; }
+      document.body.removeChild(ta);
+      say(done ? okMsg : "Could not reach the clipboard — copy the value by hand.");
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { say(okMsg); }, byHand);
+    } else {
+      byHand();
+    }
+  }
+  $("copyDistance").addEventListener("click", function () {
+    if (!isComplete()) return;
+    copyText(String(Math.round(solve(state.measure.a, state.measure.b).range)), "Distance copied.");
+  });
+  $("copyCoords").addEventListener("click", function () {
+    if (!isComplete()) return;
+    copyText("A " + gameLabel(state.measure.a) + " -> B " + gameLabel(state.measure.b) +
+      " = " + metres(solve(state.measure.a, state.measure.b).range), "Both coordinates copied.");
+  });
+
+  /* ---- saved measurements ----
+     A saved distance keeps both ends and lives in its map's own slot, so a
+     Bakurani pair never turns up on Ozeti. */
+  $("mSave").addEventListener("click", function () {
+    if (!isComplete()) return;
+    var m = state.measure;
+    var typed = (newName.value || "").trim();
+    newName.value = "";
+    state.savedPairs.unshift({
+      id: String(Date.now()) + "-" + Math.random().toString(36).slice(2, 7),
+      name: typed || gameLabel(m.a) + " → " + gameLabel(m.b),
+      a: Core.copy(m.a),
+      b: Core.copy(m.b)
+    });
+    if (state.savedPairs.length > 100) state.savedPairs.length = 100;
+    savedSig = null;
+    save();
+    render();
+    say("Saved on " + MAP_IDS[state.map] + ".");
+  });
+
+  var savedSig = null;
+  function renderSaved() {
+    var sig = state.map + "|" + state.savedPairs.map(function (o) { return o.id; }).join(",");
+    if (sig === savedSig) return;
+    savedSig = sig;
+    savedCountEl.textContent = String(state.savedPairs.length);
+    savedListEl.textContent = "";
+    if (!state.savedPairs.length) {
+      var empty = document.createElement("p");
+      empty.className = "normalized";
+      empty.textContent = "Nothing saved on " + MAP_IDS[state.map] + " yet.";
+      savedListEl.appendChild(empty);
+      return;
+    }
+    state.savedPairs.forEach(function (pair) {
+      var row = document.createElement("div");
+      row.className = "saved-pair";
+      var load = document.createElement("button");
+      load.type = "button";
+      load.className = "ghost";
+      load.textContent = metres(solve(pair.a, pair.b).range) + " · " + pair.name;
+      load.addEventListener("click", function () {
+        setArm(null);
+        commit({ a: Core.copy(pair.a), b: Core.copy(pair.b) });
+        fitMeasure();
+      });
+      var kill = document.createElement("button");
+      kill.type = "button";
+      kill.className = "ghost";
+      kill.textContent = "×";
+      kill.setAttribute("aria-label", "Forget " + pair.name);
+      kill.addEventListener("click", function () {
+        state.savedPairs = state.savedPairs.filter(function (o) { return o.id !== pair.id; });
+        savedSig = null;
+        save();
+        render();
+      });
+      row.appendChild(load);
+      row.appendChild(kill);
+      savedListEl.appendChild(row);
+    });
+  }
+
+  /* ---- the readout ---- */
+  function bearingText(g) {
+    return g.brg.toFixed(1) + "° " + PTS[Math.round(g.brg / 22.5) % 16];
+  }
+  function say(msg) {
+    if (msg === spoken) return;
+    spoken = msg;
+    statusEl.textContent = msg;
+  }
+  function paintMeasure() {
+    var m = state.measure;
+    var st = mState();
+    var tip = onA() && !onB() && preview ? preview : null;
+    var far = onB() ? m.b : tip;
+    var g = onA() && far ? solve(m.a, far) : null;
+    var drafting = !!tip;
+
+    $("mRange").textContent = g ? metres(g.range) : "— m";
+    $("resultLabel").textContent = drafting ? "Preview distance" : "Straight-line distance";
+    previewTag.hidden = !drafting;
+    $("mBrg").textContent = g ? bearingText(g) : "Choose A and B";
+    $("mMils").textContent = g ? Math.round(g.mils) + " mil" : "";
+
+    ["a", "b"].forEach(function (which) {
+      var q = m && Core.finitePoint(m[which]) ? m[which] : null;
+      normEl[which].textContent = q ? gameLabel(q) : which.toUpperCase() + " is not set";
+      // Never fight the player for the caret while they are typing in it.
+      // Anywhere else, the endpoint is the truth: writing it back also retires
+      // whatever complaint the field was still showing about older text.
+      if (document.activeElement !== coordEl[which]) {
+        var want = q ? gameLabel(q) : "";
+        if (coordEl[which].value !== want) {
+          coordEl[which].value = want;
+          showError(which, "");
+        }
+      }
+      setBtn[which].textContent = arming === which ? "Click the map" : "Set on map";
+    });
+
+    var done = st === "complete";
+    $("mSwap").disabled = !done;
+    $("copyDistance").disabled = !done;
+    $("copyCoords").disabled = !done;
+    $("mSave").disabled = !done;
+    $("fitMeasure").disabled = !(onA() || onB());
+    $("mUndo").disabled = !state.undo.length;
+    $("mClear").disabled = !m;
+    keepAEl.checked = !!state.keepA;
+
+    mapPromptEl.textContent = arming
+      ? "Click the map to set " + arming.toUpperCase() + "."
+      : (done && state.keepA ? "Click to choose another B. A stays where it is." : PROMPT[st]);
+
+    // Assistive technology hears finished results, not every preview frame.
+    if (done && g) {
+      say("Distance " + metres(g.range) + ", bearing " + bearingText(g) +
+        ", from " + gameLabel(m.a) + " to " + gameLabel(m.b) + ".");
+    } else if (!drafting) {
+      say(PROMPT[st]);
+    }
+
+    renderSaved();
+  }
+
+  /* ---- scale bar, grid spacing, zoom, imagery provenance ---- */
+  function niceDistance(target) {
+    var pow = Math.pow(10, Math.floor(Math.log10(Math.max(1, target))));
+    var lead = target / pow;
+    return (lead >= 5 ? 5 : lead >= 2 ? 2 : 1) * pow;
+  }
+  function paintScale() {
+    var r = board.getBoundingClientRect();
+    var perMetre = (r.width > 0 ? r.width / size.w : 1) * zoomK();
+    var span = niceDistance(120 / perMetre);
+    $("scaleBar").style.width = Math.max(18, Math.round(span * perMetre)) + "px";
+    $("scaleText").textContent = metres(span);
+    $("gridSpacing").textContent = "Grid " + metres(gridStep);
+    var z = TERRAIN / view.span;
+    $("zoomLevel").textContent = (z < 10 ? z.toFixed(1) : String(Math.round(z))) + "×";
+  }
+  function paintImagery() {
+    var d = MAP_DEFS[state.map];
+    var el = $("imageryNote");
+    el.textContent = d.name + " overview · ~6.4 m per source pixel · " + d.note;
+    el.className = d.calibration === "verified" ? "verified" : "";
+  }
+
+  /* ---- keyboard ----
+     Scoped to the board, so nothing is stolen from a text field and the page
+     still scrolls normally everywhere else. */
+  board.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+    var step = view.span * 0.12;
+    if (k === "ArrowLeft" || k === "ArrowRight" || k === "ArrowUp" || k === "ArrowDown") {
+      if (k === "ArrowLeft") view.cx -= step;
+      if (k === "ArrowRight") view.cx += step;
+      if (k === "ArrowUp") view.cy += step;
+      if (k === "ArrowDown") view.cy -= step;
+      clampView();
+      requestDraw();
+      saveViewSoon();
+      e.preventDefault();
+      return;
+    }
+    if (k === "+" || k === "=") { setSpan(view.span / 1.6); e.preventDefault(); return; }
+    if (k === "-" || k === "_") { setSpan(view.span * 1.6); e.preventDefault(); return; }
+    if (k === "0") { view.cx = TERRAIN / 2; view.cy = TERRAIN / 2; setSpan(TERRAIN); e.preventDefault(); return; }
+    if (k === "Enter" || k === " ") {
+      placeClick(toWorld({ x: size.w / 2, y: size.h / 2 }));
+      e.preventDefault();
+      return;
+    }
+    var low = String(k).toLowerCase();
+    if (low === "a" || low === "b") { setMode("measure"); setArm(arming === low ? null : low); e.preventDefault(); return; }
+    if (low === "n") { $("mClear").click(); e.preventDefault(); return; }
+    if (low === "u") { undo(); e.preventDefault(); return; }
+    if (low === "f") { fitMeasure(); e.preventDefault(); return; }
+  });
+
+  // Escape is the way out of anything half-done, wherever the focus is.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape" || e.defaultPrevented) return;
+    if ($("detailsDialog").open) return;
+    if (drag) { cancelDrag(); e.preventDefault(); return; }
+    if (arming) { setArm(null); e.preventDefault(); return; }
+    if (preview) { preview = null; requestDraw(true); e.preventDefault(); return; }
+    var st = mState();
+    if (st === "choose-b" || st === "choose-a") {
+      commit(state.lastComplete ? Core.copy(state.lastComplete) : null);
+      e.preventDefault();
+    }
+  });
+
+  /* ---- header and panel chrome ---- */
+  pointToggle.addEventListener("click", function () {
+    var open = pointDetails.classList.toggle("is-open");
+    pointToggle.setAttribute("aria-expanded", String(open));
+  });
+  var detailsDialog = $("detailsDialog");
+  $("detailsOpen").addEventListener("click", function () {
+    if (typeof detailsDialog.showModal === "function") detailsDialog.showModal();
+    else detailsDialog.setAttribute("open", "");
+  });
+  $("detailsClose").addEventListener("click", function () {
+    if (typeof detailsDialog.close === "function") detailsDialog.close();
+    else detailsDialog.removeAttribute("open");
+  });
+  var fsBtn = $("fullscreenBtn");
+  if (!document.documentElement.requestFullscreen) {
+    fsBtn.hidden = true;
+  } else {
+    fsBtn.addEventListener("click", function () {
+      if (document.fullscreenElement) {
+        if (document.exitFullscreen) document.exitFullscreen();
+      } else {
+        var r = document.documentElement.requestFullscreen();
+        if (r && r.catch) r.catch(function () { /* refused; the page is fine as it is */ });
+      }
+    });
+    document.addEventListener("fullscreenchange", function () {
+      var on = !!document.fullscreenElement;
+      fsBtn.textContent = on ? "Exit fullscreen" : "Fullscreen";
+      fsBtn.setAttribute("aria-label", on ? "Leave fullscreen" : "Enter fullscreen");
+      if (measureBoard()) requestDraw();
+      paintScale();
+    });
+  }
+
+  // A rectangular viewport has to be re-measured whenever it changes shape,
+  // or every click lands somewhere other than where it was aimed.
+  function onResize() {
+    if (measureBoard()) requestDraw();
+    paintScale();
+  }
+  if (typeof ResizeObserver === "function") new ResizeObserver(onResize).observe(boardWrap);
+  window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", onResize);
+
+  // A page loaded in a background tab asks for an animation frame it may never
+  // be given: some browsers defer that callback, others drop it, and a dropped
+  // one wedges every later redraw behind a request that already looks pending.
+  // Coming back into view throws the stale request away and repaints.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState !== "visible") return;
+    if (pending) { cancelAnimationFrame(pending); pending = 0; }
+    measureBoard();
+    render();
+  });
+
+  /* ---- background image ----
+     Stored per map under its own key: a screenshot is far bigger than the
+     rest of the state, and a quota failure on the image should not take the
+     markers down with it. */
+  function bgKey() { return BG_KEY + state.map; }
+
+  // Nothing stored means this map has never been touched, which gets the
+  // shipped render. Remove stores {off:1} instead of clearing the key, so that
+  // choice survives a reload rather than the render coming straight back.
+  function loadBg() {
+    var o = null;
+    try { o = JSON.parse(localStorage.getItem(bgKey()) || "null"); }
+    catch (e) { /* storage unavailable */ }
+
+    if (!o) {
+      bg = shippedBg(state.map);
+    } else if (o.off) {
+      bg = null;
+    } else if (o.shipped) {
+      // The path is this page's, not theirs, so it is taken from SHIPPED
+      // again; only what they changed about the render is restored.
+      bg = shippedBg(state.map);
+      if (bg) {
+        bg.ar = num(o.ar, 1) || 1;
+        bg.ox = num(o.ox, 0);
+        bg.oy = num(o.oy, TERRAIN);
+        bg.w = num(o.w, TERRAIN);
+        bg.fade = Math.max(0.15, Math.min(1, num(o.fade, 0.85)));
+      }
+    } else if (o.src) {
+      bg = {
+        src: String(o.src),
+        ar: num(o.ar, 1) || 1,
+        ox: num(o.ox, 0),
+        oy: num(o.oy, TERRAIN),
+        w: num(o.w, TERRAIN),
+        fade: Math.max(0.15, Math.min(1, num(o.fade, 0.85)))
+      };
+    } else {
+      bg = null;
+    }
+
+    if (bg && bg.shipped) probeShipped(state.map, bg.src);
+    bgMsg.classList.remove("warn");
+    bgMsg.textContent = bg && bg.shipped ? BG_SHIPPED : BG_HELP;
+    applyBg();
+  }
+
+  // An <image> that fails to load goes quiet rather than reporting it, so the
+  // render is fetched once on the side and the controls fall back to the bare
+  // grid if it turns out not to be there.
+  function probeShipped(id, src) {
+    if (shipOk[id] !== undefined) return;
+    var t = new Image();
+    t.onload = function () { shipOk[id] = true; };
+    t.onerror = function () {
+      shipOk[id] = false;
+      if (state.map !== id) return;
+      if (bg && bg.shipped) {
+        bg = null;
+        bgMsg.textContent = BG_HELP;
+      }
+      applyBg();
+    };
+    t.src = src;
+  }
+
+  function saveBg() {
+    try {
+      localStorage.setItem(bgKey(), JSON.stringify(bg || { off: 1 }));
+      bgMsg.classList.remove("warn");
+    } catch (e) {
+      bgMsg.textContent = "Too big for this browser's storage — the image will be gone after a reload";
+      bgMsg.classList.add("warn");
+    }
+  }
+
+  /* Only the shipped renders get the treatment. A screenshot dropped in by a
+     player is already the game's own map, and styling it a second time would
+     just crush it. */
+  function applyGameStyle() {
+    var shipped = !!(bg && bg.shipped);
+    var btn = $("bgStyle");
+    btn.hidden = !shipped;
+    btn.setAttribute("aria-pressed", String(!!state.gameStyle));
+    btn.textContent = state.gameStyle ? "Game style" : "Full colour";
+    var st = MAP_DEFS[state.map].style;
+    if (shipped && state.gameStyle && st) {
+      $("gsSat").setAttribute("values", String(GAME_SAT));
+      ["R", "G", "B"].forEach(function (ch) {
+        var f = $("gsFunc" + ch);
+        f.setAttribute("slope", String(st.slope));
+        f.setAttribute("intercept", String(st.intercept));
+      });
+      bgImg.setAttribute("filter", "url(#gameStyle)");
+    } else {
+      bgImg.removeAttribute("filter");
+    }
+  }
+
+  function applyBg() {
+    if (bg) bgImg.setAttribute("href", bg.src);
+    else bgImg.removeAttribute("href");
+    $("bgAdjust").hidden = !bg;
+    $("bgDrop").hidden = !bg;
+    $("bgFadeWrap").hidden = !bg;
+    // Offered wherever a render exists, so a dragged or removed one always has
+    // a way back to the exact placement.
+    $("bgShip").hidden = !shippedBg(state.map);
+    if (bg) bgFadeEl.value = String(Math.round(bg.fade * 100));
+    if (!bg && mode === "image") setMode("measure");
+    applyGameStyle();
+    drawBoard();
+  }
+
+  function takeImage(file) {
+    if (!file || String(file.type).indexOf("image/") !== 0) return;
+    var fr = new FileReader();
+    fr.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        // A screenshot is several times larger than the board ever shows and
+        // has to survive in localStorage, so it is shrunk once on the way in.
+        var max = 1600;
+        var k = Math.min(1, max / Math.max(img.width, img.height));
+        var cw = Math.max(1, Math.round(img.width * k));
+        var ch = Math.max(1, Math.round(img.height * k));
+        var c = document.createElement("canvas");
+        c.width = cw;
+        c.height = ch;
+        c.getContext("2d").drawImage(img, 0, 0, cw, ch);
+        var src;
+        try { src = c.toDataURL("image/jpeg", 0.82); } catch (err) { src = String(fr.result); }
+        var ar = cw / ch;
+        var w = ar >= 1 ? TERRAIN : TERRAIN * ar;
+        var h = w / ar;
+        // Starts centred on the terrain square, which is close enough for a
+        // clean full-map screenshot and a sane place to drag from otherwise.
+        bg = { src: src, ar: ar, ox: (TERRAIN - w) / 2, oy: TERRAIN - (TERRAIN - h) / 2, w: w, fade: 0.85 };
+        saveBg();
+        applyBg();
+        setMode("image");
+        if (!bgMsg.classList.contains("warn")) {
+          bgMsg.textContent = "Drag the image to move it, scroll to resize it, then go back to Measure";
+        }
+      };
+      img.onerror = function () {
+        bgMsg.textContent = "That file could not be read as an image";
+        bgMsg.classList.add("warn");
+      };
+      img.src = String(fr.result);
+    };
+    fr.readAsDataURL(file);
+  }
+
+  $("bgPick").addEventListener("click", function () { bgFile.click(); });
+  bgFile.addEventListener("change", function () {
+    takeImage(bgFile.files && bgFile.files[0]);
+    bgFile.value = "";
+  });
+  $("bgAdjust").addEventListener("click", function () { setMode(mode === "image" ? "measure" : "image"); });
+  $("bgShip").addEventListener("click", function () {
+    var b = shippedBg(state.map);
+    if (!b) return;
+    bg = b;
+    saveBg();
+    applyBg();
+    bgMsg.textContent = BG_SHIPPED;
+    bgMsg.classList.remove("warn");
+  });
+  $("bgDrop").addEventListener("click", function () {
+    bg = null;
+    saveBg();
+    applyBg();
+    bgMsg.textContent = BG_HELP;
+    bgMsg.classList.remove("warn");
+  });
+  // The slider writes to storage on release only; a data URL is far too big
+  // to rewrite on every tick of a drag.
+  bgFadeEl.addEventListener("input", function () {
+    if (!bg) return;
+    bg.fade = Math.max(0.15, Math.min(1, num(bgFadeEl.value, 85) / 100));
+    requestDraw();
+  });
+  bgFadeEl.addEventListener("change", saveBg);
+  $("bgStyle").addEventListener("click", function () {
+    state.gameStyle = !state.gameStyle;
+    applyGameStyle();
+    save();
+  });
+
+  ["dragenter", "dragover"].forEach(function (t) {
+    boardWrap.addEventListener(t, function (e) {
+      e.preventDefault();
+      boardWrap.classList.add("drop-on");
+    });
+  });
+  boardWrap.addEventListener("dragleave", function () { boardWrap.classList.remove("drop-on"); });
+  boardWrap.addEventListener("drop", function (e) {
+    e.preventDefault();
+    boardWrap.classList.remove("drop-on");
+    takeImage(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
+  });
+  // Only an image on the clipboard is taken, so pasting a coordinate line
+  // still reaches the paste box.
+  window.addEventListener("paste", function (e) {
+    var items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (var i = 0; i < items.length; i++) {
+      if (String(items[i].type).indexOf("image/") === 0) {
+        var f = items[i].getAsFile();
+        if (f) { e.preventDefault(); takeImage(f); return; }
+      }
+    }
+  });
+
+  /* ---- switching maps ---- */
+  mapSel.addEventListener("change", function () {
+    if (!MAP_IDS[mapSel.value]) return;
+    stash();
+    activate(mapSel.value);
+    loadBg();
+    applyCamera();
+    setArm(null);
+    savedSig = null;
+    syncInputs();
+    save();
+    render();
+  });
+
+  // The image belongs to the map, not the session, so it has to be fetched
+  // for whichever map the page came back up on.
+  measureBoard();
+  applyCamera();
+  setMode(mode);
+  setArm(null);
+  loadBg();
+
   function render() {
+    // Cheap insurance: a full render is not the per-frame path, and a viewBox
+    // that has fallen behind its element puts every click in the wrong place.
+    measureBoard();
     var cols = columns();
     var list = solved();
     renderHead(cols);
     renderTable(list, cols);
     renderPlot(list);
+    paintMeasure();
+    paintScale();
+    paintImagery();
+    drawBoard();
     plotHint.textContent = state.gunSplit ? "Gun at center · north up" : "You at center · north up";
   }
 
   function syncInputs() {
+    mapSel.value = state.map;
     selfX.value = fromMetres(state.self.x);
     selfY.value = fromMetres(state.self.y);
     gunX.value = fromMetres(state.gun.x);
@@ -989,6 +2793,7 @@
       if (m === null) { el.classList.add("bad"); return; }
       el.classList.remove("bad");
       state[point][axis] = m;
+      if (point === "self") state.selfSet = true; else state.gunSet = true;
       save();
       render();
     });
@@ -1065,14 +2870,21 @@
   $("resetBtn").addEventListener("click", function () {
     try {
       localStorage.removeItem(STORE);
+      localStorage.removeItem(STORE_V2);
       localStorage.removeItem(STORE_V1);
     } catch (e) { /* ignore */ }
-    state.self = { x: SEED_SELF.x, y: SEED_SELF.y };
-    state.gun = { x: SEED_SELF.x, y: SEED_SELF.y };
-    state.gunSplit = false;
     state.weapon = "none";
-    state.targets = seedTargets();
-    state.nextId = 3;
+    state.byMap = {};
+    state.byMap[DEFAULT_MAP] = blankSlot();
+    activate(DEFAULT_MAP);
+    mapSel.value = DEFAULT_MAP;
+    applyCamera();
+    setArm(null);
+    savedSig = null;
+    spoken = "";
+    showError("a", "");
+    showError("b", "");
+    loadBg();
     [selfX, selfY, gunX, gunY, newX, newY, pasteBox].forEach(function (el) {
       el.classList.remove("bad");
     });

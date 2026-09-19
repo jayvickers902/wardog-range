@@ -1,7 +1,11 @@
-# Vercel serves the generated index.html as a static site; nothing else ships.
+# Vercel serves the generated index.html and maps/ as a static site; nothing
+# else ships.
 serve.py
 build.py
 src/
+tests/
+tools/
+docs/
 README.md
 *.log
 .venv/

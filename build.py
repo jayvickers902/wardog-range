@@ -30,6 +30,7 @@ MARKER = '<div class="shell">'
 
 def main():
     body = SRC.read_text(encoding="utf-8")
+    body = body.replace('/* INLINE_RULER_CORE */', (ROOT / "src" / "ruler-core.js").read_text(encoding="utf-8"))
     i = body.find(MARKER)
     if i < 0:
         sys.exit("build: %r not found in %s" % (MARKER, SRC))
