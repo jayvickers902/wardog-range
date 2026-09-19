@@ -1120,8 +1120,16 @@
       return { a: Core.finitePoint(m.a) ? Core.copy(m.a) : null, b: Core.finitePoint(m.b) ? Core.copy(m.b) : null };
     }
     d.measure = validMeasure(s.measure);
-    d.selfSet = typeof s.selfSet === "boolean" ? s.selfSet : !(d.self.x === START_SELF.x && d.self.y === START_SELF.y && !d.targets.length);
-    d.gunSet = typeof s.gunSet === "boolean" ? s.gunSet : d.gunSplit;
+    // Position alone decides whether a station was ever placed. Older state
+    // carries no selfSet flag, and the previous rule -- centred *and* no
+    // markers -- meant anyone with markers got an observer resurrected at the
+    // dead centre of the map, which then fired confident solutions from ground
+    // they had never stood on. Having markers says nothing about where you are.
+    function placed(pt) {
+      return !(pt.x === START_SELF.x && pt.y === START_SELF.y);
+    }
+    d.selfSet = typeof s.selfSet === "boolean" ? s.selfSet : placed(d.self);
+    d.gunSet = typeof s.gunSet === "boolean" ? s.gunSet : (d.gunSplit && placed(d.gun));
     if (s.camera && Number.isFinite(s.camera.cx) && Number.isFinite(s.camera.cy) && Number.isFinite(s.camera.span) && s.camera.span > 0) {
       d.camera = { cx: Math.max(0, Math.min(TERRAIN, s.camera.cx)), cy: Math.max(0, Math.min(TERRAIN, s.camera.cy)), span: Math.max(30, Math.min(TERRAIN * 1.15, s.camera.span)) };
     }
