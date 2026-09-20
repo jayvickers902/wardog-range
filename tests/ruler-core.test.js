@@ -198,6 +198,53 @@ check("finitePoint refuses everything that is not a pair of numbers", () => {
   if (!Core.finitePoint({ x: 0, y: -0 })) throw new Error("rejected a valid point");
 });
 
+/* ---- distance ring spacing ---- */
+
+check("ring spacing keeps rings apart on screen", () => {
+  // k is pixels per metre. At 0.5 px/m a 100 m ring is 50 px, too close to
+  // read, so the step has to climb until 70 px is cleared.
+  if (Core.ringStep(1000, 0.5) * 0.5 < 70) throw new Error("rings closer than 70 px");
+  if (Core.ringStep(20000, 0.02) * 0.02 < 70) throw new Error("rings closer than 70 px zoomed out");
+  // 25 m would be 50 px apart, too close; 50 m is 100 px and only ten rings.
+  eq(Core.ringStep(500, 2), 50, "50 m steps once 50 m clears 70 px");
+  // Same zoom, more ground to cover: ten 50 m rings would become twenty, so
+  // the count limit takes over from the spacing limit.
+  eq(Core.ringStep(1000, 2), 100, "count limit coarsens the step");
+});
+
+check("ring spacing keeps the count readable", () => {
+  // Twelve rings is the ceiling however far in the camera goes.
+  [0.05, 0.2, 0.5, 1, 4, 20].forEach((k) => {
+    [500, 2000, 8000, 30000].forEach((far) => {
+      var n = far / Core.ringStep(far, k);
+      if (n > 12.0001) throw new Error(n.toFixed(1) + " rings at k=" + k + " far=" + far);
+    });
+  });
+});
+
+check("ring spacing is in metres on both sides of the comparison", () => {
+  // The bug this pins: comparing a radius in metres against a spacing in
+  // pixels. That made the rings coarser the further in you zoomed, which is
+  // backwards -- zooming in should if anything give finer rings, never
+  // coarser. Same ground, same ring count expectation, four zoom levels.
+  var seen = [1, 2, 4, 8].map((z) => Core.ringStep(2000, 0.25 * z));
+  for (var i = 1; i < seen.length; i++) {
+    if (seen[i] > seen[i - 1]) {
+      throw new Error("step grew from " + seen[i - 1] + " to " + seen[i] + " on zooming in");
+    }
+  }
+});
+
+check("ring spacing only ever uses round numbers", () => {
+  var ok = { 25: 1, 50: 1, 100: 1, 200: 1, 250: 1, 500: 1, 1000: 1, 2000: 1, 2500: 1, 5000: 1, 10000: 1 };
+  [0.01, 0.03, 0.137, 0.5, 1.1, 3, 17].forEach((k) => {
+    [100, 900, 4321, 16384].forEach((far) => {
+      var st = Core.ringStep(far, k);
+      if (!ok[st]) throw new Error("odd step " + st + " at k=" + k + " far=" + far);
+    });
+  });
+});
+
 /* ------------------------------------------------------------------------ */
 
 function pick(p) { return p ? { x: p.x, y: p.y } : null; }

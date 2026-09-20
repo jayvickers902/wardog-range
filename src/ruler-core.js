@@ -49,6 +49,21 @@
     var k = scale(view, size);
     return { x: view.cx + (p.x - size.w / 2) / k, y: view.cy - (p.y - size.h / 2) / k };
   }
+  // Ring spacing for the distance rings: the coarsest round number that is
+  // still far enough apart to tell one ring from the next, and fine enough
+  // that the whole view is not one ring. farM is the radius being covered, in
+  // metres; k is screen pixels per metre. Both limits are in the same terms,
+  // which is worth stating because they were not always: comparing a distance
+  // in metres against a spacing in pixels quietly gives sparser rings the
+  // further in you zoom, and looks plausible the whole time.
+  var RING_STEPS = [25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000];
+  function ringStep(farM, k) {
+    for (var i = 0; i < RING_STEPS.length; i++) {
+      if (RING_STEPS[i] * k >= 70 && farM / RING_STEPS[i] <= 12) return RING_STEPS[i];
+    }
+    return RING_STEPS[RING_STEPS.length - 1];
+  }
+
   function withEndpoint(measure, endpoint, point) {
     if (!finitePoint(point) || (endpoint !== "a" && endpoint !== "b")) return copy(measure);
     var next = copy(measure) || { a: null, b: null };
@@ -56,7 +71,8 @@
     return next;
   }
   var api = { copy: copy, finitePoint: finitePoint, parsePair: parsePair, gamePoint: gamePoint,
-    solve: solve, scale: scale, toScreen: toScreen, toWorld: toWorld, withEndpoint: withEndpoint };
+    solve: solve, scale: scale, toScreen: toScreen, toWorld: toWorld, withEndpoint: withEndpoint,
+    ringStep: ringStep };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.WardogCore = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

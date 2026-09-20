@@ -599,6 +599,8 @@
   .map-scale { position:absolute; bottom:14px; left:14px; padding:8px 10px; display:flex; flex-direction:column; gap:4px; background:#0e1216e8; font:12px var(--mono); pointer-events:none; }
   #scaleBar { display:block; width:100px; height:7px; border:solid var(--bone); border-width:0 2px 2px; }
   #gridSpacing { color:var(--steel); font-size:11px; margin-top:3px; }
+  #ringNote { color:var(--amber); font-size:11px; margin-top:3px; }
+  #ringNote:empty { display:none; }
   .cursor-read { position:absolute; bottom:14px; right:12px; padding:4px 8px; font:12px var(--mono); background:#0e1216df; pointer-events:none; }
   .map-footer { display:flex; justify-content:space-between; gap:10px; padding:5px 10px; font-size:12px; color:var(--steel); border-top:1px solid var(--line); }
   #imageryNote.verified { color:var(--bone); }
@@ -718,7 +720,7 @@
                   <feFuncB id="gsFuncB" type="linear" slope="1" intercept="0"/>
                 </feComponentTransfer>
               </filter></defs>
-            <g clip-path="url(#boardClip)"><image id="bgImg" preserveAspectRatio="none"></image><g id="tileLayer"></g><g id="gridLayer"></g><g id="markLayer"></g><g id="crosshairLayer"></g></g>
+            <g clip-path="url(#boardClip)"><image id="bgImg" preserveAspectRatio="none"></image><g id="tileLayer"></g><g id="gridLayer"></g><g id="ringLayer"></g><g id="markLayer"></g><g id="crosshairLayer"></g></g>
           </svg>
           <div class="map-zoom" role="group" aria-label="Map navigation">
             <button type="button" class="ghost" id="zoomIn" aria-label="Zoom in">+</button>
@@ -726,7 +728,7 @@
             <button type="button" class="ghost" id="zoomFit" aria-label="Fit whole map">Fit map</button>
           </div>
           <div class="north" aria-label="North up">↑ <strong>N</strong></div>
-          <div class="map-scale"><span id="scaleText">1,000 m</span><span id="scaleBar"></span><span id="gridSpacing">Grid 1,000 m</span></div>
+          <div class="map-scale"><span id="scaleText">1,000 m</span><span id="scaleBar"></span><span id="gridSpacing">Grid 1,000 m</span><span id="ringNote"></span></div>
           <div class="cursor-read" id="cursorRead">Drag to pan · scroll to zoom</div>
         </div>
       </div>
@@ -764,6 +766,7 @@
   <dialog id="detailsDialog" aria-labelledby="detailsTitle">
     <div class="details-heading"><h2 id="detailsTitle">Map details &amp; advanced tools</h2><button type="button" class="ghost" id="detailsClose">Close</button></div>
     <div class="modebar"><span>Place on map</span><button type="button" class="ghost" id="modeMarker" aria-pressed="false">Marker</button><button type="button" class="ghost" id="modeObs" aria-pressed="false">Observer</button><button type="button" class="ghost" id="modeGun" aria-pressed="false">Gun</button></div>
+    <div class="modebar"><span>Overlays</span><button type="button" class="ghost" id="ringsToggle" aria-pressed="false">Distance rings</button><span class="hint">Range circles around A, so nearby ground can be read off without measuring it one point at a time. Key <b>R</b>.</span></div>
   <div class="station">
     <div class="row">
       <div class="who">Observer</div>
@@ -1004,6 +1007,7 @@
     unit: "readout",
     speed: 40,
     gameStyle: true,
+    rings: false,
     weapon: "none",
     map: DEFAULT_MAP,
     byMap: {},
@@ -1088,6 +1092,7 @@
     state.speed = num(saved.speed, 0) > 0 ? Number(saved.speed) : 40;
     state.weapon = WEAPONS[saved.weapon] ? saved.weapon : "none";
     state.gameStyle = saved.gameStyle !== false;
+    state.rings = saved.rings === true;
 
     // v1 had no gun and no weapon, v2 had no map: each is one map's worth of
     // state, so it loads into the first map and behaves exactly as it did.
@@ -1127,6 +1132,7 @@
         unit: state.unit,
         speed: state.speed,
         gameStyle: state.gameStyle,
+        rings: state.rings,
         weapon: state.weapon,
         map: state.map,
         byMap: state.byMap
@@ -1541,7 +1547,7 @@
   }
 
   var board = $("board"), bgImg = $("bgImg"), tileLayer = $("tileLayer");
-  var gridLayer = $("gridLayer"), markLayer = $("markLayer");
+  var gridLayer = $("gridLayer"), ringLayer = $("ringLayer"), markLayer = $("markLayer");
   var mapSel = $("mapSel"), cursorRead = $("cursorRead");
   var boardWrap = $("boardWrap"), bgFile = $("bgFile"), bgFadeEl = $("bgFade"), bgMsg = $("bgMsg");
 
@@ -1735,6 +1741,84 @@
     gridLayer.innerHTML = s.join("");
   }
 
+  /* ---- distance rings ----
+     Range circles around A. The point is repeated estimates: drop A once and
+     every other piece of ground on screen can be read off it, instead of
+     measuring to each one in turn and losing the last answer each time.
+
+     Rings carry their own numbers. A ring that has to be counted outwards to
+     be read is a ring that gets miscounted, and the step changes with the
+     zoom, so counting would not even be stable. The outermost ring often only
+     clips a corner, and a number does not fit in a corner; that ring goes
+     unlabelled rather than being dropped, because the arc is still worth
+     seeing. */
+  var ringNow = 0;                    // step in force, metres; 0 when nothing is drawn
+  function drawRings() {
+    var m = state.measure;
+    ringNow = 0;
+    if (!state.rings || !m || !Core.finitePoint(m.a)) {
+      if (ringLayer.innerHTML) ringLayer.innerHTML = "";
+      return;
+    }
+    var c = toBoard(m.a), k = zoomK();
+
+    // A can be panned off the board, and then the rings worth drawing are a
+    // band, not a disc: everything inside the near edge is off screen too.
+    var far = 0;
+    [[0, 0], [size.w, 0], [0, size.h], [size.w, size.h]].forEach(function (q) {
+      far = Math.max(far, Math.hypot(q[0] - c.x, q[1] - c.y));
+    });
+    var nx = Math.max(0, Math.max(0 - c.x, c.x - size.w));
+    var ny = Math.max(0, Math.max(0 - c.y, c.y - size.h));
+    var near = Math.hypot(nx, ny);
+
+    var step = ringNow = Core.ringStep(far / k, k);
+    // Screen bearing of the measurement line, if there is one to avoid.
+    var other = Core.finitePoint(m.b) ? m.b : (preview || null);
+    var armBrg = null;
+    if (other && Core.finitePoint(other)) {
+      var o = toBoard(other);
+      if (Math.hypot(o.x - c.x, o.y - c.y) > 1) armBrg = Math.atan2(o.x - c.x, c.y - o.y);
+    }
+    var first = Math.max(1, Math.floor(near / k / step));
+    var last = Math.ceil(far / k / step);
+    var s = [];
+    for (var i = first; i <= last && i - first < 40; i++) {
+      var r = i * step, px = r * k;
+      var km = (r % 1000) === 0;
+      s.push(svgDot(c, px.toFixed(1), null, "var(--amber)", km ? 0.38 : 0.2, "5 7"));
+      // The label goes wherever the ring is actually on screen. North is the
+      // natural place to read it, but the outer rings reach the corners, so
+      // due north of those is off the board entirely -- and A itself can be
+      // panned away, which puts a whole ring's north side out of view. So try
+      // north first and walk around until the ring comes back into the
+      // viewport. Some angle always qualifies if any of the ring is visible.
+      var lab = null;
+      for (var pass = 0; pass < 2 && !lab; pass++) {
+        for (var a = 0; a <= 180 && !lab; a += 5) {
+          for (var sd = 0; sd < (a === 0 || a === 180 ? 1 : 2) && !lab; sd++) {
+            var th = (sd ? -a : a) * Math.PI / 180;
+            // The ruler runs out of A too, and every ring crosses it. On the
+            // first pass keep clear of it, so a label never lands on the line
+            // or on B; on the second take any spot rather than lose the ring's
+            // number, which matters more than the collision.
+            if (!pass && armBrg !== null) {
+              var off = Math.abs(((th - armBrg) * 180 / Math.PI + 540) % 360 - 180);
+              if (off < 18) continue;
+            }
+            var lx = c.x + px * Math.sin(th), ly = c.y - px * Math.cos(th);
+            if (lx > 26 && lx < size.w - 26 && ly > 15 && ly < size.h - 6) lab = { x: lx, y: ly };
+          }
+        }
+      }
+      if (lab) {
+        s.push(svgText(lab.x, lab.y + 4, metres(r),
+          { fill: "var(--amber)", size: 11, weight: 600, anchor: "middle", mono: true }));
+      }
+    }
+    ringLayer.innerHTML = s.join("");
+  }
+
   function drawStation(p, col, label) {
     return svgDot(p, 13, null, col, 0.4) +
       '<path d="M' + p.x.toFixed(1) + ' ' + (p.y - 8).toFixed(1) +
@@ -1908,6 +1992,7 @@
     }
     drawTiles();
     drawGrid();
+    drawRings();
     drawMarks();
     drawCrosshair();
   }
@@ -2516,6 +2601,8 @@
     $("scaleBar").style.width = Math.max(18, Math.round(span * perMetre)) + "px";
     $("scaleText").textContent = metres(span);
     $("gridSpacing").textContent = "Grid " + metres(gridStep);
+    $("ringNote").textContent = !state.rings ? ""
+      : (ringNow ? "Rings " + metres(ringNow) : "Rings on · place A");
     var z = TERRAIN / view.span;
     $("zoomLevel").textContent = (z < 10 ? z.toFixed(1) : String(Math.round(z))) + "×";
   }
@@ -2561,6 +2648,7 @@
     if (low === "n") { $("mClear").click(); e.preventDefault(); return; }
     if (low === "u") { undo(); e.preventDefault(); return; }
     if (low === "f") { fitMeasure(); e.preventDefault(); return; }
+    if (low === "r") { toggleRings(); e.preventDefault(); return; }
   });
 
   // Escape is the way out of anything half-done, wherever the focus is.
@@ -2824,6 +2912,17 @@
     save();
   });
 
+  function paintRings() {
+    $("ringsToggle").setAttribute("aria-pressed", String(!!state.rings));
+  }
+  function toggleRings() {
+    state.rings = !state.rings;
+    paintRings();
+    requestDraw(true);
+    save();
+  }
+  $("ringsToggle").addEventListener("click", toggleRings);
+
   ["dragenter", "dragover"].forEach(function (t) {
     boardWrap.addEventListener(t, function (e) {
       e.preventDefault();
@@ -2882,10 +2981,15 @@
     renderHead(cols);
     renderTable(list, cols);
     renderPlot(list);
+    // Draw before painting the chrome that describes the drawing. The scale
+    // bar reports the grid step and the ring step, and both are decided by
+    // the draw itself, so painting first reports the previous frame. The
+    // per-frame path has always had this order; only the full render did not,
+    // which is why a stale step could survive a zoom but never a pan.
+    drawBoard();
     paintMeasure();
     paintScale();
     paintImagery();
-    drawBoard();
     plotHint.textContent = state.gunSplit ? "Gun at center · north up" : "You at center · north up";
   }
 
@@ -2898,6 +3002,7 @@
     speedEl.value = String(state.speed);
     weaponEl.value = state.weapon;
     gunSplitEl.checked = state.gunSplit;
+    paintRings();
     gunRow.hidden = !state.gunSplit;
     var readout = state.unit === "readout";
     newX.placeholder = readout ? "70.36" : "7036";

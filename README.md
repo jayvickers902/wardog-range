@@ -69,6 +69,29 @@ tells you before the click and Undo takes back after it.
 measured on. Saved measurements are listed in the panel; clicking one restores
 it and frames it.
 
+### Distance rings
+
+**R**, or **Distance rings** under Overlays in Details, draws range circles
+around A. Drop A once and the ground around it can be read off directly,
+instead of measuring to each thing in turn and losing the last answer every
+time you start the next one.
+
+The spacing is the coarsest round number that still keeps rings 70 px apart
+and fits at most twelve of them across the view, so it changes as you zoom:
+2 km rings over a whole map, 100 m rings close in. Whatever it lands on is
+printed next to the scale bar, and every ring that has room carries its own
+number, because a ring you have to count outwards to identify is a ring that
+gets miscounted. The outermost ring often only clips a corner, where a number
+will not fit; it stays drawn and unlabelled rather than being dropped.
+
+Labels sit off the measurement line rather than on it, so they never land on
+top of B. Rings are off until you ask for them, and the setting is remembered;
+A is per map, so switching maps shows that map's rings.
+
+`Core.ringStep` is the spacing rule, and it is unit-tested -- the first version
+compared a radius in metres against a spacing in pixels, which gave *coarser*
+rings the further in you zoomed and looked entirely plausible on screen.
+
 ### Typing coordinates instead
 
 **A · From** and **B · To** each take a game coordinate pair directly. In game:

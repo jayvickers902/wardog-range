@@ -135,8 +135,14 @@ tile levels above the 2,560 px overview, cut from the full-size exports by
 kept underneath as the base and the fallback. Every tile registers at exactly
 0 m against the overview, so the calibration transfers untouched.
 
-Landmark search and distance rings remain open, as does the in-game letter
-grid -- which the captures show does not exist: the game numbers both axes.
+Distance rings are done: **R** draws labelled range circles around A, spaced
+by a rule that is unit-tested in `Core.ringStep` rather than eyeballed, with
+the step in force reported beside the scale bar. Per the plan they are off by
+default and their control sits in Details, not on the first-use screen.
+
+Landmark search remains open. The in-game letter grid can be closed instead of
+built: the captures show it does not exist, because the game numbers both
+axes.
 
 **Checked in a browser.** The two-click flow, the preview, endpoint dragging,
 Undo, Escape, coordinate entry and its rejections, pan, wheel zoom, pinch, the

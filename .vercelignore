@@ -6,6 +6,7 @@ src/
 tests/
 tools/
 docs/
+.claude/
 README.md
 *.log
 .venv/
