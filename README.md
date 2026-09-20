@@ -65,9 +65,10 @@ is -- the case where you are ranging several things from one position. Leave it
 off and a click on a finished pair starts a new measurement, which the prompt
 tells you before the click and Undo takes back after it.
 
-**Save pair** keeps both endpoints, not just one, under the map they were
-measured on. Saved measurements are listed in the panel; clicking one restores
-it and frames it.
+**Save** keeps both endpoints, not just one, under the map they were measured
+on. Name it in the box beside the button -- *Hill to Depot* -- or leave that
+blank and it is filed under its own coordinates. Saved measurements are listed
+directly underneath; clicking one restores it and frames it.
 
 ### Distance rings
 

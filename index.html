@@ -643,6 +643,11 @@
   .secondary-actions { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; }
   .secondary-actions button { flex:1; font-size:11px; }
   .map-help,.saved-pairs { border-top:1px solid var(--line); font-size:13px; color:var(--steel); }
+  .saved-pairs { padding:12px 0 4px; }
+  .preset-add { display:flex; gap:6px; }
+  .preset-add input { flex:1; min-width:0; font-size:13px; }
+  .preset-add button { padding:6px 14px; }
+  .saved-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:14px 0 8px; }
   summary { cursor:pointer; padding:12px 0; min-height:44px; }
   summary:focus-visible { outline:2px solid var(--amber); outline-offset:2px; }
   .map-help p { margin:0 0 10px; }
@@ -771,9 +776,16 @@
           <div id="normalizedB" class="normalized">B is not set</div><div class="field-error" id="errorB" role="alert"></div>
         </form>
         <div class="measure-options"><label><input type="checkbox" id="keepA"> Keep A for next measurement</label><button type="button" class="ghost" id="mSwap">Swap A / B</button></div>
-        <div class="secondary-actions"><button type="button" class="ghost" id="copyDistance">Copy distance</button><button type="button" class="ghost" id="copyCoords">Copy A + B</button><button type="button" class="ghost" id="mSave">Save pair</button></div>
+        <div class="secondary-actions"><button type="button" class="ghost" id="copyDistance">Copy distance</button><button type="button" class="ghost" id="copyCoords">Copy A + B</button></div>
         <details class="map-help"><summary>Using the in-game map</summary><p>In game, zoom to a location, right-click and choose <strong>Mark Coordinates</strong>. Copy the chat line into A or B. Press Enter or Apply. Pasted coordinates always use game units.</p><p><strong>Watch the order.</strong> On the map the game prints the <strong>y</strong> value above the point and the <strong>x</strong> value to its right, so reading down the screen hands you y first. Type them in that order and your point lands somewhere else entirely — <code>x85.91, y72.59</code> and <code>x72.59, y85.91</code> are both real places, so nothing here can warn you. Paste the chat line rather than retyping and the labels travel with it; this box reads them in either order.</p><p>Drag empty ground to pan; scroll or pinch to zoom. Drag A or B to edit, or use Set on map. A completed pair stays in place until you edit it.</p><p>Focus the map: arrow keys pan, +/− zoom, Enter selects at the crosshair, A/B edits an endpoint, N starts a new measurement, U undoes, F fits the pair, 0 fits the map, Escape cancels.</p><p>The terrain overview is about 6.4 meters per source pixel. For precise points use game coordinates; whole-meter results do not imply whole-meter image accuracy.</p></details>
-        <details class="saved-pairs"><summary>Saved measurements <span id="savedCount">0</span></summary><div id="savedPairs"></div></details>
+        <section class="saved-pairs" aria-label="Saved measurements">
+          <form class="preset-add" id="presetForm">
+            <input type="text" id="presetName" autocomplete="off" spellcheck="false" placeholder="Hill to Depot" aria-label="Name for this measurement">
+            <button type="submit" class="ghost" id="mSave">Save</button>
+          </form>
+          <div class="saved-head"><span class="eyebrow">Saved measurements</span><span id="savedCount">0</span></div>
+          <div id="savedPairs"></div>
+        </section>
       </div>
       <p id="measureStatus" class="measure-status" role="status" aria-live="polite">Choose two locations on the map.</p>
     </aside>
@@ -2496,7 +2508,7 @@
   var setBtn = { a: $("setA"), b: $("setB") };
   var keepAEl = $("keepA");
   var previewTag = $("previewTag"), mapPromptEl = $("mapPrompt"), statusEl = $("measureStatus");
-  var savedListEl = $("savedPairs"), savedCountEl = $("savedCount");
+  var savedListEl = $("savedPairs"), savedCountEl = $("savedCount"), presetName = $("presetName");
   var pointDetails = $("pointDetails"), pointToggle = $("pointToggle");
   var crosshairLayer = $("crosshairLayer");
   var preview = null;   // the prospective B under the pointer; never stored
@@ -2683,12 +2695,18 @@
 
   /* ---- saved measurements ----
      A saved distance keeps both ends and lives in its map's own slot, so a
-     Bakurani pair never turns up on Ozeti. */
-  $("mSave").addEventListener("click", function () {
+     Bakurani pair never turns up on Ozeti.
+
+     The name is typed on the button that uses it. It used to be read from the
+     marker dialog's name box, two clicks away behind Details, which meant that
+     in practice every saved pair was named after its own coordinates -- and
+     saving quietly emptied a field belonging to something else. */
+  $("presetForm").addEventListener("submit", function (e) {
+    e.preventDefault();
     if (!isComplete()) return;
     var m = state.measure;
-    var typed = (newName.value || "").trim();
-    newName.value = "";
+    var typed = (presetName.value || "").trim();
+    presetName.value = "";
     state.savedPairs.unshift({
       id: String(Date.now()) + "-" + Math.random().toString(36).slice(2, 7),
       name: typed || gameLabel(m.a) + " → " + gameLabel(m.b),
@@ -2712,7 +2730,8 @@
     if (!state.savedPairs.length) {
       var empty = document.createElement("p");
       empty.className = "normalized";
-      empty.textContent = "Nothing saved on " + MAP_IDS[state.map] + " yet.";
+      empty.textContent = "Nothing saved on " + MAP_IDS[state.map] +
+        " yet. Measure a pair, name it above, and it waits here.";
       savedListEl.appendChild(empty);
       return;
     }
