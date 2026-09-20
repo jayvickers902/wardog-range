@@ -612,6 +612,8 @@
   #ringNote { color:var(--amber); font-size:11px; margin-top:3px; }
   #ringNote:empty { display:none; }
   .cursor-read { position:absolute; bottom:calc(var(--fb,0px) + 14px); right:calc(var(--fr,0px) + 12px); padding:4px 8px; font:12px var(--mono); background:#0e1216df; pointer-events:none; }
+  /* Offset from the pointer by JS, so left/top stay at the frame origin. */
+  .hover-read { position:absolute; left:0; top:0; padding:3px 7px; font:12px var(--mono); color:var(--bone); background:#0e1216f2; white-space:nowrap; pointer-events:none; }
   .map-footer { display:flex; justify-content:space-between; gap:10px; padding:5px 10px; font-size:12px; color:var(--steel); border-top:1px solid var(--line); }
   #imageryNote.verified { color:var(--bone); }
   #imageryNote.verified::before { content:"\2713\00a0"; color:var(--amber); }
@@ -742,6 +744,7 @@
           <div class="north" aria-label="North up">↑ <strong>N</strong></div>
           <div class="map-scale"><span id="scaleText">1,000 m</span><span id="scaleBar"></span><span id="gridSpacing">Grid 1,000 m</span><span id="ringNote"></span></div>
           <div class="cursor-read" id="cursorRead">Drag to pan · scroll to zoom</div>
+          <div class="hover-read" id="hoverRead" hidden></div>
         </div>
       </div>
       <div class="map-footer"><span id="imageryNote">Terrain overview · alignment not yet verified in game</span><span id="zoomLevel">1×</span></div>
@@ -1593,6 +1596,7 @@
   var MIN_SPAN = 80;
   var GRAB = 16;
   var BG_KEY = "wardogs-map-bg-";
+  var MAP_HINT = "Drag to pan · scroll to zoom";
   var BG_HELP = "Drop or paste a screenshot of the in-game map, then Adjust to line it up with the grid";
   var BG_SHIPPED = "Shipped render, pinned to the grid. Fade it back, or drop your own screenshot over it";
 
@@ -1639,7 +1643,7 @@
   var board = $("board"), bgImg = $("bgImg"), tileLayer = $("tileLayer");
   var gridLayer = $("gridLayer"), ringLayer = $("ringLayer"), markLayer = $("markLayer");
   var frameEl = document.querySelector(".board-frame"), mapClipRect = $("mapClipRect");
-  var mapSel = $("mapSel"), cursorRead = $("cursorRead");
+  var mapSel = $("mapSel"), cursorRead = $("cursorRead"), hoverRead = $("hoverRead");
   var boardWrap = $("boardWrap"), bgFile = $("bgFile"), bgFadeEl = $("bgFade"), bgMsg = $("bgMsg");
 
   var view = { cx: TERRAIN / 2, cy: TERRAIN / 2, span: TERRAIN };
@@ -2332,10 +2336,37 @@
     drag.slop = e.pointerType === "mouse" ? 4 : 12;
   });
 
+  /* ---- what is under the pointer ----
+     Lining the board up against the game's own map means reading a spot here
+     and finding it there, and a number in the far corner of the window makes
+     that a two-look job, so the coordinates are printed beside the pointer as
+     well. Touch gets the corner alone: a label under the finger is a label
+     nobody can see. Off the terrain square there is nothing to read, and the
+     corner goes back to saying what the board does. */
+  var HOVER_CH = 7.2;   // IBM Plex Mono at 12px, in CSS pixels
+  function readCursor(e, p, w) {
+    var on = w.x >= 0 && w.x <= TERRAIN && w.y >= 0 && w.y <= TERRAIN;
+    cursorRead.textContent = on
+      ? "x " + fromMetres(w.x) + "   y " + fromMetres(w.y)
+      : MAP_HINT;
+    if (!on || e.pointerType === "touch") { hoverRead.hidden = true; return; }
+    var s = "x " + fromMetres(w.x) + "  y " + fromMetres(w.y);
+    hoverRead.textContent = s;
+    // Down and right of the pointer, where the hand is not, and flipped back
+    // across it rather than hanging off the edge of the board.
+    var lw = s.length * HOVER_CH + 14, lh = 21;
+    var x = p.x + 16, y = p.y + 18;
+    if (x + lw > size.w - 4) x = p.x - 16 - lw;
+    if (y + lh > size.h - 4) y = p.y - 18 - lh;
+    hoverRead.style.transform = "translate(" + Math.round(Math.max(4, x)) +
+      "px," + Math.round(Math.max(4, y)) + "px)";
+    hoverRead.hidden = false;
+  }
+
   board.addEventListener("pointermove", function (e) {
     var p = eventPoint(e);
     var w = toWorld(p);
-    cursorRead.textContent = "x " + fromMetres(w.x) + "   y " + fromMetres(w.y);
+    readCursor(e, p, w);
     if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
 
     if (pinch && pointers.size >= 2) {
@@ -2410,7 +2441,8 @@
   board.addEventListener("pointercancel", function (e) { dropPointer(e); cancelDrag(); });
   board.addEventListener("lostpointercapture", function (e) { dropPointer(e); });
   board.addEventListener("pointerleave", function (e) {
-    if (!drag) cursorRead.textContent = "Drag to pan · scroll to zoom";
+    hoverRead.hidden = true;
+    if (!drag) cursorRead.textContent = MAP_HINT;
     if (!drag && preview && e.pointerType !== "touch") { preview = null; requestDraw(); }
   });
   board.addEventListener("focus", function () { aiming = true; requestDraw(); });

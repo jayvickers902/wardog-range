@@ -140,9 +140,15 @@ letterboxed, and numbers left at the edge of the window would sit out in the
 dark a long way from the line they name. Zoom in far enough to push an edge off
 screen and that side's numbers fall back to the window edge, and any number a
 panel would cover is left out rather than printed underneath it. The grid is
-numeric on both axes, not letters against numbers, and **y counts upward**: 1 at the bottom, 16 at the top, north up. The marked
-coordinate you paste is in hundredths of those numbers, so `x100.29` sits just
-past the line marked `10`.
+numeric on both axes, not letters against numbers, and **y counts upward**:
+1 at the bottom, 16 at the top, north up. The marked coordinate you paste is in
+hundredths of those numbers, so `x100.29` sits just past the line marked `10`.
+
+The coordinates under the pointer are printed beside it as you move, and in
+the corner of the map as well, in the same readout numbers the game uses -- so
+a spot on the board can be read off and then found in game. Off the terrain
+square there is nothing to read, and both go quiet. Touch keeps the corner
+alone: a label under the finger is a label nobody can see.
 
 Drag empty ground to pan, scroll or pinch to zoom; the wheel zooms about the
 cursor. Two fingers is always a gesture and never a placement, and a cancelled
