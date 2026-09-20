@@ -727,7 +727,7 @@
                   <feFuncB id="gsFuncB" type="linear" slope="1" intercept="0"/>
                 </feComponentTransfer>
               </filter></defs>
-            <g clip-path="url(#boardClip)"><image id="bgImg" preserveAspectRatio="none"></image><g id="gridLayer"></g><g id="markLayer"></g><g id="crosshairLayer"></g></g>
+            <g clip-path="url(#boardClip)"><image id="bgImg" preserveAspectRatio="none"></image><g id="tileLayer"></g><g id="gridLayer"></g><g id="markLayer"></g><g id="crosshairLayer"></g></g>
           </svg>
           <div class="map-zoom" role="group" aria-label="Map navigation">
             <button type="button" class="ghost" id="zoomIn" aria-label="Zoom in">+</button>
@@ -1587,7 +1587,31 @@
     return { src: SHIPPED[id], ar: 1, ox: 0, oy: TERRAIN, w: TERRAIN, fade: 0.85, shipped: true };
   }
 
-  var board = $("board"), bgImg = $("bgImg");
+  /* ---- higher-resolution tiles ----
+     The 2,560 px overview is 6.4 m per pixel, which runs out well before the
+     board does. These levels sit on top of it, cut by tools/cut-tiles.py and
+     named by how many tiles span the map: 16 x 512 px over 16,384 m is 2 m per
+     pixel. Only the squares on screen are ever fetched, and the overview stays
+     underneath, so a gap while one loads shows coarse ground rather than none. */
+  var TILE_PX = 512;
+  var TILE_LEVELS = [8, 16];          // 4 m/px, then 2 m/px
+  var OVERVIEW_MPP = TERRAIN / 2560;  // 6.4
+  var tileFail = {};                  // "map/across" once that level 404s
+  var tileNodes = {};                 // live <image> elements, keyed by tile id
+
+  function levelMpp(across) { return TERRAIN / (across * TILE_PX); }
+
+  // The coarsest level that is still finer than the screen. Below the
+  // overview's own resolution there is nothing to gain by fetching anything.
+  function pickLevel(mppOnScreen) {
+    if (mppOnScreen >= OVERVIEW_MPP) return 0;
+    for (var i = 0; i < TILE_LEVELS.length; i++) {
+      if (levelMpp(TILE_LEVELS[i]) <= mppOnScreen) return TILE_LEVELS[i];
+    }
+    return TILE_LEVELS[TILE_LEVELS.length - 1];
+  }
+
+  var board = $("board"), bgImg = $("bgImg"), tileLayer = $("tileLayer");
   var gridLayer = $("gridLayer"), markLayer = $("markLayer");
   var mapSel = $("mapSel"), cursorRead = $("cursorRead");
   var boardWrap = $("boardWrap"), bgFile = $("bgFile"), bgFadeEl = $("bgFade"), bgMsg = $("bgMsg");
@@ -1682,7 +1706,7 @@
     if (pending) return;
     pending = requestAnimationFrame(function () {
       pending = 0;
-      if (pendingFull) { pendingFull = false; render(); } else { drawBoard(); paintMeasure(); paintScale(); }
+      if (pendingFull) { pendingFull = false; render(); } else { drawBoard(); paintMeasure(); paintScale(); paintImagery(); }
     });
   }
 
@@ -1886,6 +1910,60 @@
       svgDot({ x: cx, y: cy }, 20, null, "var(--bone)", 0.45, "3 4");
   }
 
+  function drawTiles() {
+    var across = 0;
+    // Only the shipped render is tiled. A screenshot somebody dropped in is one
+    // picture and has no levels above it.
+    if (bg && bg.shipped && !bg.off) across = pickLevel(1 / zoomK());
+    if (across && tileFail[state.map + "/" + across]) across = 0;
+    if (!across) {
+      if (tileLayer.childNodes.length) { tileLayer.textContent = ""; tileNodes = {}; }
+      return;
+    }
+    var step = TERRAIN / across;                 // world metres per tile
+    var tl = toWorld({ x: 0, y: 0 });
+    var br = toWorld({ x: size.w, y: size.h });
+    var x0 = Math.max(0, Math.floor(tl.x / step)), x1 = Math.min(across - 1, Math.floor(br.x / step));
+    var y0 = Math.max(0, Math.floor((TERRAIN - tl.y) / step)), y1 = Math.min(across - 1, Math.floor((TERRAIN - br.y) / step));
+    var k = zoomK(), span = step * k + 1, keep = {};
+
+    for (var ty = y0; ty <= y1; ty++) {
+      for (var tx = x0; tx <= x1; tx++) {
+        var id = state.map + "/" + across + "/" + tx + "_" + ty;
+        keep[id] = true;
+        var el = tileNodes[id];
+        if (!el) {
+          el = document.createElementNS("http://www.w3.org/2000/svg", "image");
+          el.setAttribute("preserveAspectRatio", "none");
+          el.setAttributeNS("http://www.w3.org/1999/xlink", "href",
+            "maps/tiles/" + state.map + "/" + across + "/" + tx + "_" + ty + ".webp");
+          el.setAttribute("href",
+            "maps/tiles/" + state.map + "/" + across + "/" + tx + "_" + ty + ".webp");
+          // One miss means the level was never cut, so stop asking for the rest.
+          el.addEventListener("error", (function (lvlKey) {
+            return function () { tileFail[lvlKey] = true; requestDraw(); };
+          })(state.map + "/" + across));
+          tileNodes[id] = el;
+          tileLayer.appendChild(el);
+        }
+        var q = toBoard({ x: tx * step, y: TERRAIN - ty * step });
+        el.setAttribute("x", q.x.toFixed(1));
+        el.setAttribute("y", q.y.toFixed(1));
+        el.setAttribute("width", span.toFixed(1));
+        el.setAttribute("height", span.toFixed(1));
+        el.setAttribute("opacity", String(bg.fade));
+      }
+    }
+    Object.keys(tileNodes).forEach(function (id) {
+      if (keep[id]) return;
+      if (tileNodes[id].parentNode) tileNodes[id].parentNode.removeChild(tileNodes[id]);
+      delete tileNodes[id];
+    });
+    // Same treatment as the overview, so a tile never reads as a brighter patch.
+    tileLayer.setAttribute("filter", bgImg.getAttribute("filter") || "");
+    if (!bgImg.getAttribute("filter")) tileLayer.removeAttribute("filter");
+  }
+
   function drawBoard() {
     if (bg) {
       var p = toBoard({ x: bg.ox, y: bg.oy });
@@ -1899,6 +1977,7 @@
     } else {
       bgImg.style.display = "none";
     }
+    drawTiles();
     drawGrid();
     drawMarks();
     drawCrosshair();
@@ -2514,7 +2593,11 @@
   function paintImagery() {
     var d = MAP_DEFS[state.map];
     var el = $("imageryNote");
-    el.textContent = d.name + " overview · ~6.4 m per source pixel · " + d.note;
+    var across = (bg && bg.shipped && !bg.off) ? pickLevel(1 / zoomK()) : 0;
+    if (across && tileFail[state.map + "/" + across]) across = 0;
+    var mpp = across ? levelMpp(across) : OVERVIEW_MPP;
+    el.textContent = d.name + " " + (across ? "tiles" : "overview") +
+      " · " + (mpp % 1 ? mpp.toFixed(1) : mpp) + " m per source pixel · " + d.note;
     el.className = d.calibration === "verified" ? "verified" : "";
   }
 
@@ -2842,6 +2925,8 @@
     if (!MAP_IDS[mapSel.value]) return;
     stash();
     activate(mapSel.value);
+    tileLayer.textContent = "";
+    tileNodes = {};
     loadBg();
     applyCamera();
     setArm(null);

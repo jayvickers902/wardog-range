@@ -122,12 +122,21 @@ capture settled the grid convention: numeric axes, 1 km squares, y counting
 north upward, ticks on integer kilometre lines -- so the board's edge labels
 now use the game's own kilometre numbers instead of raw readout values.
 
-**Bakurani and Zestafona are still unverified**, and deliberately still say so.
-The rasters came from separate sources, so Ozeti's result does not transfer.
-Their `playableExtent` stays null rather than adopting the community figures,
-which were not measured against these particular files. Higher-resolution
-tiles, game-matched terrain styling, landmark search and distance rings remain
-open; each needs the same reference pass, which is now one capture per map.
+All three maps have since been checked against their own in-game capture:
+Ozeti to 20 m RMS, Zestafona to 28 m, Bakurani to about 110 m -- weaker only
+because its capture carries kilometre labels on one axis and no tick marks, so
+its north anchor was fitted rather than measured. Playable bounds are settled
+for Ozeti alone; Zestafona's reading disagrees with the published figure by up
+to 320 m and Bakurani's was never visible, so neither draws a boundary.
+
+Higher-resolution imagery is done. The board now carries 4 m and 2 m per pixel
+tile levels above the 2,560 px overview, cut from the full-size exports by
+`tools/cut-tiles.py`, fetched only for the ground on screen, with the overview
+kept underneath as the base and the fallback. Every tile registers at exactly
+0 m against the overview, so the calibration transfers untouched.
+
+Landmark search and distance rings remain open, as does the in-game letter
+grid -- which the captures show does not exist: the game numbers both axes.
 
 **Checked in a browser.** The two-click flow, the preview, endpoint dragging,
 Undo, Escape, coordinate entry and its rejections, pan, wheel zoom, pinch, the

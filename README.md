@@ -189,6 +189,35 @@ building. The art is Bulkhead's, carried here small and lossy so the board is
 not a blank grid. To re-cut them, change `target` and `q` in the conversion and
 re-run it against the originals.
 
+### Tiles above the overview
+
+Zoom past the overview and the board switches to tiles, which go three times
+finer:
+
+    maps/tiles/<map>/8/<x>_<y>.webp     8 across   =  4,096 px   4 m per pixel
+    maps/tiles/<map>/16/<x>_<y>.webp   16 across   =  8,192 px   2 m per pixel
+
+The level is named by how many tiles span the map, so the path says what it is:
+16 tiles of 512 px over 16,384 m is 2 m per pixel. 320 tiles per map, 960 in
+all, 42 MB -- but only the squares actually on screen are ever fetched, so what
+a player downloads is a screenful, not a map. The overview stays underneath as
+the base layer, which is what a tile that is still loading, or missing
+entirely, falls through to.
+
+`tools/cut-tiles.py` cuts them from the full-size exports, which are 0.4 to
+1.5 GB each and are not in the repository. It needs pyvips
+(`pip install "pyvips[binary]"`), which streams the decode instead of wanting
+four gigabytes of memory for a 32,768 px source.
+
+Every tile was checked against the overview it sits on: all nine sampled
+landed at exactly 0 m offset, so the placement each map was calibrated at
+carries over to the tiles without re-deriving anything.
+
+Nothing here came from anyone else's site. [wardogshub.gg](https://wardogshub.gg/map/)
+hosts a good interactive viewer of the same maps, and its `robots.txt` closes
+the raster to automated fetching; that request is respected here. The exports
+these tiles are cut from match or beat what it serves anyway.
+
 They are also drawn the way the game draws its map, rather than as the bright
 green terrain renders they arrive as. The in-game map is very nearly greyscale
 -- measured at 0.014 saturation with a neutral channel balance, over the
@@ -262,7 +291,7 @@ this tool cannot see. Fire a ranging shell.
     index.html          generated; served locally and by Vercel
     maps/               shipped terrain renders, one WebP per map
     tests/              regression checks for src/ruler-core.js
-    tools/              map calibration against in-game captures
+    tools/              map calibration, and cutting tiles from the exports
     docs/               the distance-map plan and the map reference review
     serve.py            local static server
 
