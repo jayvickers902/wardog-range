@@ -70,9 +70,126 @@
     next[endpoint] = { x: point.x, y: point.y };
     return next;
   }
+  /* ---- landmark lists ----
+     A landmark file is somebody else's export of game data this page has
+     never had, so nothing about its shape is assumed past a name and two
+     numbers: the usual keys are tried in turn, a GeoJSON-ish feature is
+     unwrapped, and anything that will not reduce to a point inside the
+     terrain square is counted and dropped rather than drawn somewhere
+     plausible. Units are read from the file when it says and inferred when
+     it does not: the game readout stops at 163.84 and metres run to 16384,
+     so the two ranges cannot be mistaken for each other. What no file can
+     tell us is whether x and y arrived the right way round -- that one is on
+     the reader, which is why the loader reports a count and the map prints
+     coordinates under the pointer. */
+  var POI_CAP = 4000;
+  var POI_LISTS = ["points", "markers", "pois", "landmarks", "items", "locations", "features", "results", "data"];
+  var POI_X = ["x", "X", "posX", "worldX", "east"];
+  var POI_Y = ["y", "Y", "posY", "worldY", "north"];
+  var POI_NAME = ["name", "label", "title", "text"];
+  var POI_KIND = ["kind", "type", "category", "group", "layer", "icon"];
+
+  function poiNum(v) {
+    if (typeof v === "number") return isFinite(v) ? v : null;
+    if (typeof v === "string" && /^[+-]?(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(v.trim())) {
+      var n = Number(v.trim().replace(",", "."));
+      return isFinite(n) ? n : null;
+    }
+    return null;
+  }
+  function poiField(o, keys) {
+    for (var i = 0; i < keys.length; i++) {
+      var v = o[keys[i]];
+      if (v !== undefined && v !== null && v !== "") return v;
+    }
+    return null;
+  }
+  function poiSlug(v) {
+    var s = String(v == null ? "" : v).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return s.slice(0, 24) || "other";
+  }
+  function poiXY(o) {
+    var pair = o.coordinates || o.coords || o.position || o.pos || o.at ||
+      (o.geometry && o.geometry.coordinates) || null;
+    if (Array.isArray(pair)) {
+      return pair.length >= 2 ? { x: poiNum(pair[0]), y: poiNum(pair[1]) } : { x: null, y: null };
+    }
+    if (pair && typeof pair === "object") {
+      return { x: poiNum(poiField(pair, POI_X)), y: poiNum(poiField(pair, POI_Y)) };
+    }
+    return { x: poiNum(poiField(o, POI_X)), y: poiNum(poiField(o, POI_Y)) };
+  }
+  function poiEntry(o) {
+    if (!o || typeof o !== "object") return null;
+    // A feature keeps its numbers outside and its names inside, so both
+    // halves are consulted before anything is given up on.
+    var inner = o.properties && typeof o.properties === "object" ? o.properties : null;
+    var xy = poiXY(o);
+    if ((xy.x === null || xy.y === null) && inner) xy = poiXY(inner);
+    if (xy.x === null || xy.y === null) return null;
+    var name = poiField(o, POI_NAME);
+    if (name === null && inner) name = poiField(inner, POI_NAME);
+    var kind = poiField(o, POI_KIND);
+    if (kind === null && inner) kind = poiField(inner, POI_KIND);
+    return {
+      name: String(name === null ? "" : name).replace(/\s+/g, " ").trim().slice(0, 48),
+      kind: poiSlug(kind),
+      x: xy.x,
+      y: xy.y
+    };
+  }
+  function readPoi(raw, terrain) {
+    if (!(terrain > 0)) return null;
+    var meta = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+    var body = Array.isArray(raw) ? raw : null;
+    for (var i = 0; !body && i < POI_LISTS.length; i++) {
+      if (Array.isArray(meta[POI_LISTS[i]])) body = meta[POI_LISTS[i]];
+    }
+    if (!body || !body.length) return null;
+    var read = [], dropped = 0, j = 0;
+    for (; j < body.length && read.length < POI_CAP; j++) {
+      var e = poiEntry(body[j]);
+      if (e) read.push(e); else dropped++;
+    }
+    dropped += body.length - j;
+    if (!read.length) return null;
+
+    var said = String(poiField(meta, ["units", "unit"]) || "").toLowerCase();
+    var units = /^(m$|metre|meter|world)/.test(said) ? "metres"
+      : /^(readout|game|grid)/.test(said) ? "readout" : null;
+    if (!units) {
+      var max = 0;
+      read.forEach(function (e) { max = Math.max(max, Math.abs(e.x), Math.abs(e.y)); });
+      units = max > terrain / 100 ? "metres" : "readout";
+    }
+    var k = units === "readout" ? 100 : 1;
+    var down = meta.yDown === true ||
+      /^(south|down|image|screen)/.test(String(poiField(meta, ["yDirection", "yAxis"]) || "").toLowerCase());
+
+    var seen = {}, points = [], count = {}, order = [];
+    read.forEach(function (e) {
+      var x = e.x * k, y = down ? terrain - e.y * k : e.y * k;
+      if (!(x >= 0 && x <= terrain && y >= 0 && y <= terrain)) { dropped++; return; }
+      var key = e.kind + "|" + e.name + "|" + Math.round(x) + "|" + Math.round(y);
+      if (seen[key]) { dropped++; return; }
+      seen[key] = 1;
+      if (count[e.kind] === undefined) { count[e.kind] = 0; order.push(e.kind); }
+      count[e.kind]++;
+      points.push({ name: e.name || "Unnamed", kind: e.kind, x: x, y: y });
+    });
+    if (!points.length) return null;
+    return {
+      points: points,
+      kinds: order.sort().map(function (n) { return { kind: n, count: count[n] }; }),
+      units: units,
+      yDown: down,
+      dropped: dropped
+    };
+  }
+
   var api = { copy: copy, finitePoint: finitePoint, parsePair: parsePair, gamePoint: gamePoint,
     solve: solve, scale: scale, toScreen: toScreen, toWorld: toWorld, withEndpoint: withEndpoint,
-    ringStep: ringStep };
+    ringStep: ringStep, readPoi: readPoi };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.WardogCore = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

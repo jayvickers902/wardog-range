@@ -174,7 +174,8 @@ Ozeti, Zestafona) share the same 16.384 km square, the same 100 m unit and the
 same north-up convention. What picking a map buys is separate state per map --
 its own ruler, observer, gun, markers, saved pairs, background image and camera
 position -- rather than one pile shared by all three. Per-map terrain height
-and named POI presets would need game data nobody has published.
+would need game data nobody has published. Named places are not published
+either, but the page will draw a list you hand it -- see **Landmarks**.
 
 Rounding a result to the metre is a statement about the arithmetic, not about
 the picture underneath it. Where a click lands on the terrain render is a
@@ -309,6 +310,37 @@ first visit sees.
 Reset does not change, and throwing away a screenshot somebody lined up by hand
 is not what that button is for. `Remove` is next to the image controls.
 
+### Landmarks
+
+Towers, spawns, fuel refills and ladders are game data this page has never had,
+and it still ships with none. It draws whatever list is put beside it: a file
+served at `maps/poi/<map>.json`, or a `.json` dragged onto the board, which is
+kept in that browser for that map alone. `maps/poi/README.md` has the format
+and where a list comes from.
+
+A landmark is a diamond coloured by category, named once the view is tight
+enough to read the names -- at map zoom a hundred names is a grey smear, so
+below about 7 km across only the one under the pointer is labelled. The
+categories in the file become show/hide chips above the board with their
+counts, and what you hide stays hidden across maps and reloads: hiding ladders
+is a statement about ladders, not about Ozeti.
+
+They are drawn under your own markers and cannot be dragged -- they are
+somebody's record of where things are, not part of the measurement. What they
+do is snap: a click, a drag or the preview line within about 11 px of a
+landmark takes its recorded coordinates instead of the pixel you hit, and the
+readout beside the pointer names it and shows those coordinates before you
+click, so the snap is never a surprise. That is the only reason a range finder
+wants a marker list at all -- measuring *Hill 402 to the north depot* without
+first hunting for two coordinates.
+
+The reader is forgiving about shape and units and strict about the square:
+anything that will not reduce to a point inside the terrain is dropped and
+counted rather than drawn somewhere convenient. It cannot tell a transposed
+file from a correct one, though, because `x85.91, y72.59` and `x72.59, y85.91`
+are both real places. Check one landmark against the game before trusting the
+rest.
+
 ## Game data
 
 Everything below is community measurement. Bulkhead has published none of it,
@@ -338,6 +370,7 @@ this tool cannot see. Fire a ranging shell.
     build.py            wraps src/page.html into index.html
     index.html          generated; served locally and by Vercel
     maps/               shipped terrain renders, one WebP per map
+    maps/poi/           optional landmark lists, one JSON per map; none shipped
     tests/              regression checks for src/ruler-core.js
     tools/              map calibration, and cutting tiles from the exports
     docs/               the distance-map plan and the map reference review

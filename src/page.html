@@ -588,6 +588,16 @@
   .map-panel { margin:0; min-height:0; min-width:0; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--line-hot); background:var(--ink); }
   .map-toolbar { display:flex; align-items:center; padding:8px; gap:12px; border-bottom:1px solid var(--line); }
   .map-toolbar p { margin:0; font-size:14px; line-height:1.35; color:var(--bone); }
+  .poi-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:5px 8px; border-bottom:1px solid var(--line); }
+  .poi-bar[hidden] { display:none; }
+  .poi-bar .ghost { min-height:32px; padding:4px 10px; }
+  .poi-kinds { display:flex; flex-wrap:wrap; gap:6px; flex:1; }
+  .poi-chip { display:inline-flex; align-items:center; gap:7px; min-height:32px; padding:4px 10px; background:transparent; color:var(--bone); border:1px solid var(--line); font-size:12px; letter-spacing:.04em; }
+  .poi-chip:hover { border-color:var(--line-hot); background:var(--panel-2); }
+  .poi-chip[aria-pressed="false"] { color:var(--steel-dim); opacity:.55; }
+  .poi-chip[aria-pressed="false"] .swatch { opacity:.3; }
+  .poi-chip .swatch { width:9px; height:9px; transform:rotate(45deg); }
+  .poi-chip em { font:11px var(--mono); font-style:normal; color:var(--steel); }
   .board-wrap { flex:1; min-height:0; padding:0; }
   .board-frame { width:100%; height:100%; margin:0; overflow:hidden; }
   .board { width:100%; height:100%; aspect-ratio:auto; border:0; border-radius:0; }
@@ -718,6 +728,12 @@
         <button type="button" id="modeMeasure" aria-pressed="true">Measure</button>
         <p id="mapPrompt">Click your start point, then your destination.</p>
       </div>
+      <div class="poi-bar" id="poiBar" hidden>
+        <span class="eyebrow">Landmarks</span>
+        <div class="poi-kinds" id="poiKinds"></div>
+        <button type="button" class="ghost" id="poiAll">Hide all</button>
+        <button type="button" class="ghost" id="poiForget" hidden>Forget</button>
+      </div>
       <div class="board-wrap" id="boardWrap">
         <div class="board-frame">
           <svg id="board" class="board" viewBox="0 0 1000 1000" tabindex="0" role="region" aria-roledescription="interactive map" aria-label="Terrain map. Click two locations to measure. Arrow keys pan; plus and minus zoom; Enter places a point at the crosshair." aria-describedby="mapPrompt">
@@ -730,7 +746,7 @@
                   <feFuncB id="gsFuncB" type="linear" slope="1" intercept="0"/>
                 </feComponentTransfer>
               </filter></defs>
-            <g clip-path="url(#boardClip)"><image id="bgImg" preserveAspectRatio="none"></image><g id="tileLayer"></g><g id="gridLayer"></g><g id="ringLayer" clip-path="url(#mapClip)"></g><g id="markLayer"></g><g id="crosshairLayer"></g></g>
+            <g clip-path="url(#boardClip)"><image id="bgImg" preserveAspectRatio="none"></image><g id="tileLayer"></g><g id="gridLayer"></g><g id="ringLayer" clip-path="url(#mapClip)"></g><g id="poiLayer"></g><g id="markLayer"></g><g id="crosshairLayer"></g></g>
           </svg>
           <div class="map-zoom" role="group" aria-label="Map navigation">
             <button type="button" class="ghost" id="zoomIn" aria-label="Zoom in">+</button>
@@ -830,6 +846,8 @@
     <div class="imgbar">
       <input type="file" id="bgFile" accept="image/*" class="hide">
       <button type="button" class="ghost" id="bgPick">Map image</button>
+      <input type="file" id="poiFile" accept=".json,application/json" class="hide">
+      <button type="button" class="ghost" id="poiPick">Landmarks</button>
       <button type="button" class="ghost" id="bgAdjust" aria-pressed="false" hidden>Adjust</button>
       <button type="button" class="ghost" id="bgShip" hidden>Shipped map</button>
       <button type="button" class="ghost" id="bgStyle" aria-pressed="true" hidden>Game style</button>
@@ -901,6 +919,7 @@
     <h3>The map</h3>
     <p>The board is the whole terrain square in plan view. <strong>Measure</strong> pins two points and gives you the range between them; <strong>Marker</strong>, <strong>Observer</strong> and <strong>Gun</strong> drop that thing where you click. Anything already on the board can be dragged, drag empty ground to pan, scroll to zoom. Each map keeps its own positions, markers and image, so Ozeti's targets never turn up on Bakurani.</p>
     <p>Each map ships a plan-view render of its terrain. It covers exactly the square the board draws, so it is pinned corner to corner and needs no lining up: <strong>Fade</strong> takes it back under the grid, <strong>Remove</strong> clears it, <strong>Shipped map</strong> puts it back where it belongs. The renders are downscaled hard to keep the page quick, so they are for recognising ground, not for reading it.</p>
+    <p><strong>Landmarks.</strong> This page ships no marker list: towers, spawns and fuel points are game data nobody has published. Drop a <code>.json</code> list on the board, or pick one with <strong>Landmarks</strong> below, and it is drawn on that map and kept in this browser until you press Forget. Categories become show/hide chips above the map, and clicking a landmark snaps the endpoint to its recorded coordinates. Check one against the game first: a file with x and y the wrong way round loads without complaint and puts everything somewhere plausible and wrong.</p>
     <p>To use your own instead, drop or paste a screenshot of the in-game map, then use <strong>Adjust</strong> to drag and scale it until its grid sits on the board's grid. It is stored in this browser only, and alignment by eye is exactly as accurate as you make it: the numbers come from where you click, so a sloppily placed image gives sloppy ranges. The grid and the coordinate readout are the truth, the picture is a convenience.</p>
 
     <h3>Observer and gun</h3>
@@ -1028,6 +1047,7 @@
     rings: false,
     weapon: "none",
     map: DEFAULT_MAP,
+    poiOff: {},
     byMap: {},
     self: null,
     gun: null,
@@ -1111,6 +1131,13 @@
     state.weapon = WEAPONS[saved.weapon] ? saved.weapon : "none";
     state.gameStyle = saved.gameStyle !== false;
     state.rings = saved.rings === true;
+    // Landmarks are hidden by category, not by map: switching maps to look at
+    // the same kind of thing should not turn it back on.
+    if (saved.poiOff && typeof saved.poiOff === "object") {
+      Object.keys(saved.poiOff).forEach(function (k) {
+        if (saved.poiOff[k] === true) state.poiOff[k] = true;
+      });
+    }
 
     // v1 had no gun and no weapon, v2 had no map: each is one map's worth of
     // state, so it loads into the first map and behaves exactly as it did.
@@ -1153,6 +1180,7 @@
         rings: state.rings,
         weapon: state.weapon,
         map: state.map,
+        poiOff: state.poiOff,
         byMap: state.byMap
       }));
     } catch (e) { var status = document.getElementById("measureStatus"); if (status) status.textContent = "Browser storage is full or unavailable; changes will not survive reload."; }
@@ -1569,6 +1597,8 @@
   var gridLayer = $("gridLayer"), ringLayer = $("ringLayer"), markLayer = $("markLayer");
   var frameEl = document.querySelector(".board-frame"), mapClipRect = $("mapClipRect");
   var mapSel = $("mapSel"), cursorRead = $("cursorRead"), hoverRead = $("hoverRead");
+  var poiBar = $("poiBar"), poiKinds = $("poiKinds"), poiFile = $("poiFile");
+  var poiAllBtn = $("poiAll"), poiForgetBtn = $("poiForget");
   var boardWrap = $("boardWrap"), bgFile = $("bgFile"), bgFadeEl = $("bgFade"), bgMsg = $("bgMsg");
 
   var view = { cx: TERRAIN / 2, cy: TERRAIN / 2, span: TERRAIN };
@@ -1932,6 +1962,187 @@
       svgText(p.x + 14, p.y + 4, label, { fill: col, size: 12 });
   }
 
+  /* ---- landmarks ----
+     Towers, spawns, fuel and ladders are game data this page has never had.
+     It still ships with none: it draws whatever list is put beside it, from
+     maps/poi/<map>.json if a file is served there, or from a .json dropped on
+     the board, which is kept in this browser for that map alone. Both go
+     through the same reader, so a file that works one way works the other.
+
+     They are drawn under the player's own marks and cannot be dragged: they
+     are somebody's record of where things are, not part of the measurement.
+     Clicking one does snap the endpoint to its exact coordinates, which is
+     the only reason a range finder wants them at all.  */
+  var POI_KEY = "wardogs-poi-";
+  var POI_LABEL_SPAN = 7000;   // metres across the short side
+  var POI_REACH = 11;          // board pixels, so the same reach at every zoom
+  var POI_COLS = ["var(--amber)", "var(--b-close)", "var(--b-direct)", "var(--b-long)", "var(--steel)", "var(--hostile)"];
+  // The categories we can guess at get a fixed colour so two files agree;
+  // anything else takes its colour from where it falls in the file's own list.
+  var POI_FIXED = { tower: "var(--amber)", spawn: "var(--b-close)", fuel: "var(--b-long)", ladder: "var(--b-direct)" };
+  var poi = {};        // map id -> reading, or null once we have looked and found none
+  var poiAsked = {};
+  var poiHover = null;
+
+  // Matched loosely, because nobody else calls them what we would: "fuel" has
+  // to catch "fuel-refill" and "spawn" has to catch "spawn-point", or the
+  // colours change every time the file does.
+  function poiFixed(kind) {
+    var keys = Object.keys(POI_FIXED);
+    for (var i = 0; i < keys.length; i++) {
+      if (kind.indexOf(keys[i]) >= 0) return POI_FIXED[keys[i]];
+    }
+    return null;
+  }
+  function poiColours(r) {
+    r.col = {};
+    r.kinds.forEach(function (k, i) {
+      k.col = poiFixed(k.kind) || POI_COLS[i % POI_COLS.length];
+      r.col[k.kind] = k.col;
+    });
+    return r;
+  }
+  function poiTitle(kind) {
+    var t = kind.replace(/-/g, " ");
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  function poiCount(r) {
+    return r.points.length + (r.points.length === 1 ? " landmark" : " landmarks");
+  }
+  function poiRead(text) {
+    var r = null;
+    try { r = Core.readPoi(JSON.parse(text), TERRAIN); } catch (e) { r = null; }
+    return r ? poiColours(r) : null;
+  }
+  function poiShow(id, r, kept) {
+    poi[id] = r;
+    if (r) r.kept = kept === true;
+    if (id !== state.map) return;
+    poiBarSync();
+    requestDraw(true);
+  }
+  function ensurePoi(id) {
+    if (poiAsked[id]) return;
+    poiAsked[id] = true;
+    var kept = null;
+    try { kept = localStorage.getItem(POI_KEY + id); } catch (e) { /* no storage */ }
+    if (kept) {
+      var r = poiRead(kept);
+      if (r) { poiShow(id, r, true); return; }
+    }
+    // Served next to the page, like the renders are. Having no file is the
+    // normal case, so a miss is silence rather than a complaint.
+    if (typeof fetch !== "function") { poi[id] = null; return; }
+    fetch("maps/poi/" + id + ".json", { cache: "no-cache" }).then(function (res) {
+      return res.ok ? res.text() : null;
+    }).then(function (text) {
+      poiShow(id, text ? poiRead(text) : null, false);
+    })["catch"](function () { poiShow(id, null, false); });
+  }
+  function takePoi(file) {
+    var fr = new FileReader();
+    fr.onload = function () {
+      var text = String(fr.result);
+      var r = poiRead(text);
+      if (!r) { say("No landmarks could be read out of that file."); return; }
+      poiAsked[state.map] = true;
+      poi[state.map] = r;
+      r.kept = true;
+      poiHover = null;
+      poiBarSync();
+      // Drawn now rather than next frame, because the draw has its own thing
+      // to say on the status line and this has to be what is left there.
+      render();
+      // 400 KB of names is already more than any of these maps holds, and a
+      // quota error here would cost the drop that just worked.
+      try {
+        if (text.length < 400000) localStorage.setItem(POI_KEY + state.map, text);
+      } catch (e) { /* this session still has it */ }
+      say(poiCount(r) + " on " + MAP_IDS[state.map] +
+        (r.dropped ? ", " + r.dropped + " skipped" : "") +
+        ". Check one against the game: nothing here can tell x from y.");
+    };
+    fr.readAsText(file);
+  }
+  function forgetPoi() {
+    try { localStorage.removeItem(POI_KEY + state.map); } catch (e) { /* ignore */ }
+    poi[state.map] = null;
+    poiAsked[state.map] = false;
+    poiHover = null;
+    poiBarSync();
+    requestDraw(true);
+  }
+
+  // The nearest landmark to a world point, within reach. Smaller than GRAB on
+  // purpose: a landmark must never be easier to hit than a ruler pin sitting
+  // on top of it.
+  function nearPoi(w) {
+    var r = poi[state.map];
+    if (!r) return null;
+    var p = toBoard(w), best = null, bd = POI_REACH;
+    r.points.forEach(function (t) {
+      if (state.poiOff[t.kind]) return;
+      var q = toBoard(t);
+      var d = Math.hypot(q.x - p.x, q.y - p.y);
+      if (d < bd) { bd = d; best = t; }
+    });
+    return best;
+  }
+  // Where a click, a drag or the preview line actually lands. A landmark
+  // under the pointer wins: its coordinates came out of the game and are
+  // better than anything a pixel can say.
+  function placePoint(w) {
+    var t = nearPoi(w);
+    return t ? { x: t.x, y: t.y } : snapWorld(w);
+  }
+
+  function poiDiamond(p, col, hot) {
+    var r = hot ? 7 : 4.5;
+    return '<path d="M' + p.x.toFixed(1) + ' ' + (p.y - r).toFixed(1) +
+      'L' + (p.x + r).toFixed(1) + ' ' + p.y.toFixed(1) +
+      'L' + p.x.toFixed(1) + ' ' + (p.y + r).toFixed(1) +
+      'L' + (p.x - r).toFixed(1) + ' ' + p.y.toFixed(1) +
+      'Z" fill="' + col + '" fill-opacity="' + (hot ? 0.95 : 0.62) +
+      '" stroke="var(--ink)" stroke-width="1" stroke-opacity="0.75"/>';
+  }
+  /* A hundred names at map zoom is a grey smear, so the names wait until the
+     view is tight enough to read them -- except the one under the pointer,
+     which is the one being asked about. */
+  function drawPoi() {
+    ensurePoi(state.map);
+    var r = poi[state.map];
+    if (!r) { if (poiLayer.innerHTML) poiLayer.innerHTML = ""; return; }
+    var named = view.span <= POI_LABEL_SPAN;
+    var s = [];
+    r.points.forEach(function (t) {
+      if (state.poiOff[t.kind]) return;
+      var p = toBoard(t);
+      if (p.x < -60 || p.y < -20 || p.x > size.w + 60 || p.y > size.h + 20) return;
+      var hot = t === poiHover;
+      s.push(poiDiamond(p, r.col[t.kind] || "var(--steel)", hot));
+      if (named || hot) {
+        s.push(svgText(p.x + 9, p.y + 4, t.name,
+          { fill: hot ? "var(--bone)" : "var(--steel)", size: 12, weight: 500 }));
+      }
+    });
+    poiLayer.innerHTML = s.join("");
+  }
+
+  function poiBarSync() {
+    var r = poi[state.map];
+    poiBar.hidden = !r;
+    if (!r) return;
+    poiKinds.innerHTML = r.kinds.map(function (k) {
+      return '<button type="button" class="poi-chip" data-kind="' + k.kind +
+        '" aria-pressed="' + (state.poiOff[k.kind] ? "false" : "true") + '">' +
+        '<span class="swatch" style="background:' + k.col + '"></span>' +
+        esc(poiTitle(k.kind)) + ' <em>' + k.count + '</em></button>';
+    }).join("");
+    poiAllBtn.textContent = r.kinds.some(function (k) { return !state.poiOff[k.kind]; })
+      ? "Hide all" : "Show all";
+    poiForgetBtn.hidden = !r.kept;
+  }
+
   function drawMarks() {
     var s = [];
     var fp = firingPoint();
@@ -2111,6 +2322,7 @@
     drawTiles();
     drawGrid();
     drawRings();
+    drawPoi();
     drawMarks();
     drawCrosshair();
   }
@@ -2129,7 +2341,7 @@
   }
 
   function placeClick(raw) {
-    var w = snapWorld(raw);
+    var w = placePoint(raw);
     if (mode === "marker") {
       var name = newName.value.trim();
       newName.value = "";
@@ -2274,8 +2486,16 @@
     cursorRead.textContent = on
       ? "x " + fromMetres(w.x) + "   y " + fromMetres(w.y)
       : MAP_HINT;
+    // A landmark under the pointer takes the chip over: the name is what the
+    // click is about to snap to, so the chip says so before the click.
+    var near = on ? nearPoi(w) : null;
+    if (near !== poiHover) { poiHover = near; requestDraw(); }
     if (!on || e.pointerType === "touch") { hoverRead.hidden = true; return; }
-    var s = "x " + fromMetres(w.x) + "  y " + fromMetres(w.y);
+    // Beside the pointer the chip describes the click, not the pixel: on a
+    // landmark it names it and prints its recorded coordinates, which is where
+    // the point is about to land. The corner keeps reporting the pointer.
+    var at = near || w;
+    var s = (near ? near.name + "   " : "") + "x " + fromMetres(at.x) + "  y " + fromMetres(at.y);
     hoverRead.textContent = s;
     // Down and right of the pointer, where the hand is not, and flipped back
     // across it rather than hanging off the edge of the board.
@@ -2310,7 +2530,7 @@
       // Between the first click and the second, the line follows the pointer.
       var want = mode === "measure" && !arming && state.measure &&
         Core.finitePoint(state.measure.a) && !Core.finitePoint(state.measure.b)
-        ? snapWorld(w) : null;
+        ? placePoint(w) : null;
       if ((want ? want.x + "," + want.y : "") !== (preview ? preview.x + "," + preview.y : "")) {
         preview = want;
         requestDraw();
@@ -2332,7 +2552,7 @@
       bg.oy = drag.oy + (w.y - s0.y);
       requestDraw();
     } else {
-      var n = snapWorld({ x: w.x + drag.dx, y: w.y + drag.dy });
+      var n = placePoint({ x: w.x + drag.dx, y: w.y + drag.dy });
       drag.pin.ref.x = n.x;
       drag.pin.ref.y = n.y;
       requestDraw(true);
@@ -3086,8 +3306,39 @@
   boardWrap.addEventListener("drop", function (e) {
     e.preventDefault();
     boardWrap.classList.remove("drop-on");
-    takeImage(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    // A picture is the map; a .json is the list of things on it.
+    if (f && (String(f.type).indexOf("json") >= 0 || /\.json$/i.test(f.name || ""))) takePoi(f);
+    else takeImage(f);
   });
+  $("poiPick").addEventListener("click", function () { poiFile.click(); });
+  poiFile.addEventListener("change", function () {
+    if (poiFile.files && poiFile.files[0]) takePoi(poiFile.files[0]);
+    poiFile.value = "";
+  });
+  poiKinds.addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest(".poi-chip") : null;
+    if (!b) return;
+    var kind = b.getAttribute("data-kind");
+    if (state.poiOff[kind]) delete state.poiOff[kind]; else state.poiOff[kind] = true;
+    poiHover = null;
+    save();
+    poiBarSync();
+    requestDraw(true);
+  });
+  poiAllBtn.addEventListener("click", function () {
+    var r = poi[state.map];
+    if (!r) return;
+    var anyOn = r.kinds.some(function (k) { return !state.poiOff[k.kind]; });
+    r.kinds.forEach(function (k) {
+      if (anyOn) state.poiOff[k.kind] = true; else delete state.poiOff[k.kind];
+    });
+    poiHover = null;
+    save();
+    poiBarSync();
+    requestDraw(true);
+  });
+  poiForgetBtn.addEventListener("click", forgetPoi);
   // Only an image on the clipboard is taken, so pasting a coordinate line
   // still reaches the paste box.
   window.addEventListener("paste", function (e) {
@@ -3109,6 +3360,8 @@
     tileLayer.textContent = "";
     tileNodes = {};
     loadBg();
+    poiHover = null;
+    poiBarSync();
     applyCamera();
     setArm(null);
     savedSig = null;
@@ -3249,8 +3502,13 @@
       localStorage.removeItem(STORE);
       localStorage.removeItem(STORE_V2);
       localStorage.removeItem(STORE_V1);
+      Object.keys(MAP_IDS).forEach(function (id) { localStorage.removeItem(POI_KEY + id); });
     } catch (e) { /* ignore */ }
     state.weapon = "none";
+    state.poiOff = {};
+    poi = {};
+    poiAsked = {};
+    poiHover = null;
     state.byMap = {};
     state.byMap[DEFAULT_MAP] = blankSlot();
     activate(DEFAULT_MAP);
@@ -3262,6 +3520,7 @@
     showError("a", "");
     showError("b", "");
     loadBg();
+    poiBarSync();
     [selfX, selfY, gunX, gunY, newX, newY, pasteBox].forEach(function (el) {
       el.classList.remove("bad");
     });

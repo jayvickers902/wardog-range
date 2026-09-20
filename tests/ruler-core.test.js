@@ -245,6 +245,101 @@ check("ring spacing only ever uses round numbers", () => {
   });
 });
 
+/* ---- landmark files -------------------------------------------------------
+   A landmark list is an export from somewhere else, so these checks are about
+   what happens to a file nobody here wrote: which key holds the points, what
+   the numbers mean, and what becomes of an entry that cannot be believed. */
+
+const T = 16384;
+function poi(raw) { return Core.readPoi(raw, T); }
+
+check("game readout is recognised without being told", () => {
+  const r = poi({ points: [{ name: "Tower 4", kind: "tower", x: 85.91, y: 72.59 }] });
+  eq(r.units, "readout", "units");
+  eq(r.points[0], { name: "Tower 4", kind: "tower", x: 8591, y: 7259 }, "point");
+});
+
+check("metres are recognised without being told", () => {
+  const r = poi({ points: [{ name: "Depot", x: 8591, y: 7259 }] });
+  eq(r.units, "metres", "units");
+  near(r.points[0].x, 8591, 0.001, "x");
+});
+
+check("the file's own units beat the guess", () => {
+  const r = poi({ units: "metres", points: [{ name: "Hut", x: 120, y: 90 }] });
+  eq(r.units, "metres", "units");
+  eq([r.points[0].x, r.points[0].y], [120, 90], "point");
+});
+
+check("a southward y axis is flipped to the game's", () => {
+  const r = poi({ yDirection: "south", units: "metres", points: [{ name: "A", x: 100, y: 384 }] });
+  eq(r.yDown, true, "yDown");
+  eq(r.points[0].y, T - 384, "y");
+});
+
+check("points outside the square are dropped and counted", () => {
+  const r = poi({ units: "metres", points: [
+    { name: "in", x: 10, y: 10 },
+    { name: "out", x: -5, y: 10 },
+    { name: "far", x: T + 1, y: 10 }
+  ] });
+  eq(r.points.length, 1, "kept");
+  eq(r.dropped, 2, "dropped");
+});
+
+check("a bare array of points is a landmark file too", () => {
+  const r = poi([{ name: "A", x: 10.5, y: 20.5 }, { name: "B", x: 11.5, y: 21.5 }]);
+  eq(r.points.length, 2, "points");
+});
+
+check("features keep their numbers outside and their names inside", () => {
+  const r = poi({ features: [
+    { geometry: { coordinates: [85.91, 72.59] }, properties: { name: "Tower 4", type: "Fuel Refill" } }
+  ] });
+  eq(r.points[0].name, "Tower 4", "name");
+  eq(r.points[0].kind, "fuel-refill", "kind");
+});
+
+check("a category is a slug, and missing means other", () => {
+  const r = poi({ markers: [
+    { name: "A", category: "Spawn Point", x: 10, y: 10 },
+    { name: "B", x: 11, y: 11 }
+  ] });
+  eq(r.kinds, [{ kind: "other", count: 1 }, { kind: "spawn-point", count: 1 }], "kinds");
+});
+
+check("the same landmark twice is one landmark", () => {
+  const r = poi([{ name: "A", kind: "tower", x: 10, y: 10 }, { name: "A", kind: "tower", x: 10, y: 10 }]);
+  eq(r.points.length, 1, "points");
+  eq(r.dropped, 1, "dropped");
+});
+
+check("numbers written as strings still count", () => {
+  const r = poi([{ name: "A", x: "85,91", y: "72.59" }]);
+  eq([r.points[0].x, r.points[0].y], [8591, 7259], "point");
+});
+
+check("a file with nothing readable in it reads as nothing", () => {
+  [null, 42, "hello", {}, [], { points: [] }, { points: [{ name: "A" }] },
+    { points: [{ name: "A", x: "north", y: 3 }] }].forEach((raw) => {
+    if (poi(raw) !== null) throw new Error("expected null for " + JSON.stringify(raw));
+  });
+});
+
+check("one unreadable entry does not lose the rest", () => {
+  const r = poi([{ name: "A", x: 10, y: 10 }, { nope: true }, null, { name: "B", x: 11, y: 11 }]);
+  eq(r.points.length, 2, "points");
+  eq(r.dropped, 2, "dropped");
+});
+
+check("an enormous file is capped rather than swallowed", () => {
+  const many = [];
+  for (let i = 0; i < 4200; i++) many.push({ name: "P" + i, x: 10 + i / 1000, y: 20 });
+  const r = poi(many);
+  eq(r.points.length, 4000, "points");
+  eq(r.dropped, 200, "dropped");
+});
+
 /* ------------------------------------------------------------------------ */
 
 function pick(p) { return p ? { x: p.x, y: p.y } : null; }
