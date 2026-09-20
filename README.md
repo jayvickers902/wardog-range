@@ -76,6 +76,11 @@ around A. Drop A once and the ground around it can be read off directly,
 instead of measuring to each thing in turn and losing the last answer every
 time you start the next one.
 
+Rings stop at the edge of the map square, the way the game's own circles do,
+rather than sweeping on across the dark; the square on screen is also what
+decides their spacing, so a letterboxed window is not measured as if the dead
+ground around the map counted.
+
 The spacing is the coarsest round number that still keeps rings 70 px apart
 and fits at most twelve of them across the view, so it changes as you zoom:
 2 km rings over a whole map, 100 m rings close in. Whatever it lands on is
@@ -113,6 +118,14 @@ The panel echoes each endpoint back in the game's own notation
 ### Reading the board
 
 The board is the whole terrain square in plan view, 16.384 km a side, north up.
+The compass, the scale bar and the cursor hint ride the corners of the map
+square itself rather than the corners of the window, and fall back to the
+window once the zoom pushes those corners off screen. Fitted whole the square
+is letterboxed, and a scale bar stranded in the corner of a wide window
+describes ground it is nowhere near. The zoom buttons are the exception: they
+get clicked over and over, and a button that slides out from under the cursor
+between clicks is a button you misclick.
+
 A scale bar sits on the map at all times, and next to it the grid interval
 currently drawn -- 1,000 m, 100 m or 10 m, whichever has room to be read at
 this zoom. That number is printed rather than implied, because a square that
@@ -120,9 +133,14 @@ silently changes what it is worth is worse than no grid.
 
 The edge scale is labelled with the game's own kilometre grid numbers, 0 to 16
 on both axes, because that is what the game prints down the edges of its map --
-checked against an in-game capture rather than assumed. The grid is numeric on
-both axes, not letters against numbers, its ticks sit on the kilometre lines,
-and **y counts upward**: 1 at the bottom, 16 at the top, north up. The marked
+checked against an in-game capture rather than assumed. The numbers hang on the
+frame of the map square itself, centred on their own lines with a tick joining
+the two, which is where the game puts them; fitted whole the square is
+letterboxed, and numbers left at the edge of the window would sit out in the
+dark a long way from the line they name. Zoom in far enough to push an edge off
+screen and that side's numbers fall back to the window edge, and any number a
+panel would cover is left out rather than printed underneath it. The grid is
+numeric on both axes, not letters against numbers, and **y counts upward**: 1 at the bottom, 16 at the top, north up. The marked
 coordinate you paste is in hundredths of those numbers, so `x100.29` sits just
 past the line marked `10`.
 

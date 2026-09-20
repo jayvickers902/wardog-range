@@ -595,13 +595,16 @@
   .map-zoom { position:absolute; top:30px; right:12px; display:flex; flex-direction:column; box-shadow:0 4px 16px #0006; }
   .map-zoom button { min-width:48px; background:#111920ee; color:var(--bone); border-color:var(--line-hot); }
   .map-zoom button:first-child,.map-zoom button:nth-child(2) { font-size:23px; line-height:1; }
-  .north { position:absolute; left:14px; top:34px; font:18px var(--mono); text-shadow:0 1px 4px #000,0 1px 4px #000; pointer-events:none; }
-  .map-scale { position:absolute; bottom:14px; left:14px; padding:8px 10px; display:flex; flex-direction:column; gap:4px; background:#0e1216e8; font:12px var(--mono); pointer-events:none; }
+  /* 26px in, not the 14 the other corners use: when the map is wider than the
+     window the side numbers pin to its left edge, and the compass has to stand
+     clear of them rather than blot two of them out. */
+  .north { position:absolute; left:calc(var(--fl,0px) + 26px); top:calc(var(--ft,0px) + 34px); font:18px var(--mono); text-shadow:0 1px 4px #000,0 1px 4px #000; pointer-events:none; }
+  .map-scale { position:absolute; bottom:calc(var(--fb,0px) + 14px); left:calc(var(--fl,0px) + 14px); padding:8px 10px; display:flex; flex-direction:column; gap:4px; background:#0e1216e8; font:12px var(--mono); pointer-events:none; }
   #scaleBar { display:block; width:100px; height:7px; border:solid var(--bone); border-width:0 2px 2px; }
   #gridSpacing { color:var(--steel); font-size:11px; margin-top:3px; }
   #ringNote { color:var(--amber); font-size:11px; margin-top:3px; }
   #ringNote:empty { display:none; }
-  .cursor-read { position:absolute; bottom:14px; right:12px; padding:4px 8px; font:12px var(--mono); background:#0e1216df; pointer-events:none; }
+  .cursor-read { position:absolute; bottom:calc(var(--fb,0px) + 14px); right:calc(var(--fr,0px) + 12px); padding:4px 8px; font:12px var(--mono); background:#0e1216df; pointer-events:none; }
   .map-footer { display:flex; justify-content:space-between; gap:10px; padding:5px 10px; font-size:12px; color:var(--steel); border-top:1px solid var(--line); }
   #imageryNote.verified { color:var(--bone); }
   #imageryNote.verified::before { content:"\2713\00a0"; color:var(--amber); }
@@ -673,7 +676,7 @@
     .map-toolbar p { font-size:12px; }
     .map-footer { font-size:10px; padding:3px 6px; }
     .map-zoom { right:8px; top:26px; }
-    .map-scale { bottom:8px; left:8px; }
+    .map-scale { bottom:calc(var(--fb,0px) + 8px); left:calc(var(--fl,0px) + 8px); }
     .measure-panel { flex:none; max-height:59%; overflow:hidden; }
     .distance-summary { padding:8px 12px; }
     #mRange { font-size:34px; }
@@ -711,7 +714,7 @@
       <div class="board-wrap" id="boardWrap">
         <div class="board-frame">
           <svg id="board" class="board" viewBox="0 0 1000 1000" tabindex="0" role="region" aria-roledescription="interactive map" aria-label="Terrain map. Click two locations to measure. Arrow keys pan; plus and minus zoom; Enter places a point at the crosshair." aria-describedby="mapPrompt">
-            <defs><clipPath id="boardClip"><rect x="0" y="0" width="1000" height="1000"/></clipPath>
+            <defs><clipPath id="boardClip"><rect x="0" y="0" width="1000" height="1000"/></clipPath><clipPath id="mapClip"><rect id="mapClipRect" x="0" y="0" width="1000" height="1000"/></clipPath>
               <filter id="gameStyle" color-interpolation-filters="sRGB">
                 <feColorMatrix id="gsSat" type="saturate" values="0.08"/>
                 <feComponentTransfer>
@@ -720,7 +723,7 @@
                   <feFuncB id="gsFuncB" type="linear" slope="1" intercept="0"/>
                 </feComponentTransfer>
               </filter></defs>
-            <g clip-path="url(#boardClip)"><image id="bgImg" preserveAspectRatio="none"></image><g id="tileLayer"></g><g id="gridLayer"></g><g id="ringLayer"></g><g id="markLayer"></g><g id="crosshairLayer"></g></g>
+            <g clip-path="url(#boardClip)"><image id="bgImg" preserveAspectRatio="none"></image><g id="tileLayer"></g><g id="gridLayer"></g><g id="ringLayer" clip-path="url(#mapClip)"></g><g id="markLayer"></g><g id="crosshairLayer"></g></g>
           </svg>
           <div class="map-zoom" role="group" aria-label="Map navigation">
             <button type="button" class="ghost" id="zoomIn" aria-label="Zoom in">+</button>
@@ -1548,6 +1551,7 @@
 
   var board = $("board"), bgImg = $("bgImg"), tileLayer = $("tileLayer");
   var gridLayer = $("gridLayer"), ringLayer = $("ringLayer"), markLayer = $("markLayer");
+  var frameEl = document.querySelector(".board-frame"), mapClipRect = $("mapClipRect");
   var mapSel = $("mapSel"), cursorRead = $("cursorRead");
   var boardWrap = $("boardWrap"), bgFile = $("bgFile"), bgFadeEl = $("bgFade"), bgMsg = $("bgMsg");
 
@@ -1672,7 +1676,66 @@
       esc(s) + '</text>';
   }
 
+  /* ---- map furniture ----
+     The game's compass, scale and edge numbers all cling to the frame of the
+     map. Fitted whole the square is letterboxed in a wide window, and a scale
+     bar left in the corner of that window describes ground it is nowhere
+     near, so the compass, the scale card and the cursor readout ride the
+     visible corners of the square instead, clamped back to the window once
+     the zoom pushes those corners off screen. The board hands them the inset
+     and the stylesheet keeps its own padding on top, so the narrow layout can
+     still tuck them in tighter.
+
+     The zoom buttons stay where they are. They get clicked over and over, and
+     a button that slides out from under the cursor between clicks is a button
+     you misclick. */
+  var inset = { l: -1, t: -1, r: -1, b: -1 };
+  function placeFurniture(tl, br) {
+    var ROOM = 130;   // no corner is worth pushing a panel off the far side for
+    var l = Math.round(Math.max(0, Math.min(tl.x, size.w - ROOM)));
+    var t = Math.round(Math.max(0, Math.min(tl.y, size.h - ROOM)));
+    var r = Math.round(size.w - Math.min(size.w, Math.max(br.x, ROOM)));
+    var b = Math.round(size.h - Math.min(size.h, Math.max(br.y, ROOM)));
+    if (l === inset.l && t === inset.t && r === inset.r && b === inset.b) return;
+    inset = { l: l, t: t, r: r, b: b };
+    frameEl.style.setProperty("--fl", l + "px");
+    frameEl.style.setProperty("--ft", t + "px");
+    frameEl.style.setProperty("--fr", r + "px");
+    frameEl.style.setProperty("--fb", b + "px");
+  }
+
   /* ---- drawing ---- */
+  // The compass, the zoom cluster and the scale card are painted over the
+  // board, and a number printed underneath one of them is a number nobody can
+  // read. Where they sit is a matter of CSS, which moves them on a small
+  // screen, so they are measured rather than assumed; the cache is thrown away
+  // once a frame, at the top of drawBoard.
+  var furn = null;
+  function furniture() {
+    if (furn) return furn;
+    furn = [];
+    var r = board.getBoundingClientRect();
+    if (!(r.width > 0)) return furn;
+    var k = size.w / r.width;
+    [".north", ".map-zoom", ".map-scale"].forEach(function (sel) {
+      var el = document.querySelector(sel);
+      var b = el && el.getBoundingClientRect();
+      if (!b || !(b.width > 0)) return;
+      furn.push({ x: (b.left - r.left) * k, y: (b.top - r.top) * k, w: b.width * k, h: b.height * k });
+    });
+    return furn;
+  }
+  // x, y is the top-left of the text's own box, with a couple of units of air
+  // around it: a number touching the edge of a panel still reads as a mistake.
+  function covered(x, y, w, h) {
+    var f = furniture();
+    for (var i = 0; i < f.length; i++) {
+      if (x + w > f[i].x - 3 && x < f[i].x + f[i].w + 3 &&
+        y + h > f[i].y - 2 && y < f[i].y + f[i].h + 2) return true;
+    }
+    return false;
+  }
+
   var gridStep = 1000;
   function drawGrid() {
     var s = [];
@@ -1709,15 +1772,32 @@
     // kilometre grid, 0-16 on both axes, counting north upward. Checked
     // against an in-game capture. The readout coordinate is in hundredths of
     // these, so x100.29 sits just past the line marked 10.
+    //
+    // The game hangs those numbers on the frame of the map itself, each one
+    // centred on its line with a tick joining the two. Fitted whole, the map
+    // is letterboxed in a wide window, so numbers pinned to the window edge
+    // instead would sit out in the dark, a long way from the line they name.
+    // Once the zoom pushes an edge off screen there is no frame left to hang
+    // that side's numbers on, and they fall back to the window edge.
+    var hangTop = tl.y >= 18, hangLeft = tl.x >= 26;
+    var rowY = hangTop ? tl.y - 6 : 13;    // baseline of the numbers along the top
+    var colX = hangLeft ? tl.x - 6 : 21;   // right edge of the numbers down the side
     for (var r = 0; r <= 160; r += 10) {
       var mm = r * 100;
       var km = String(r / 10);
+      var lw = km.length * 6 + 2;
       var lx = toBoard({ x: mm, y: 0 }).x;
-      if (lx > 16 && lx < size.w - 4) s.push(svgText(lx + 3, 13, km, { size: 10, weight: 500, mono: true }));
+      if (lx >= left - 1 && lx <= right + 1 && lx > 7 && lx < size.w - 7 &&
+          !covered(lx - lw / 2, rowY - 9, lw, 12)) {
+        s.push(svgText(lx, rowY, km, { size: 10, weight: 500, mono: true, anchor: "middle" }));
+        if (hangTop) s.push(svgLine(lx, tl.y - 4, lx, tl.y, "var(--line-hot)", 1, 0.85));
+      }
       var ly = toBoard({ x: 0, y: mm }).y;
-      // The north badge occupies the top-left corner, and a number printed
-      // underneath it is a number nobody can read.
-      if (ly > 54 && ly < size.h - 4) s.push(svgText(4, ly - 3, km, { size: 10, weight: 500, mono: true }));
+      if (ly >= top - 1 && ly <= bot + 1 && ly > 9 && ly < size.h - 4 &&
+          !covered(colX - lw, ly - 5, lw, 12)) {
+        s.push(svgText(colX, ly + 4, km, { size: 10, weight: 500, mono: true, anchor: "end" }));
+        if (hangLeft) s.push(svgLine(tl.x - 4, ly, tl.x, ly, "var(--line-hot)", 1, 0.85));
+      }
     }
 
     s.push('<rect ' + box + ' fill="none" stroke="var(--line-hot)" stroke-width="1.5"/>');
@@ -1762,14 +1842,22 @@
     }
     var c = toBoard(m.a), k = zoomK();
 
-    // A can be panned off the board, and then the rings worth drawing are a
+    // The rings are clipped to the map square, so it is the square on screen
+    // -- not the window around it -- that decides how far they have to reach
+    // and how far apart they are worth drawing.
+    var tl = toBoard({ x: 0, y: TERRAIN }), br = toBoard({ x: TERRAIN, y: 0 });
+    var x0 = Math.max(0, tl.x), y0 = Math.max(0, tl.y);
+    var x1 = Math.min(size.w, br.x), y1 = Math.min(size.h, br.y);
+    if (!(x1 > x0 && y1 > y0)) { ringLayer.innerHTML = ""; return; }
+
+    // A can be panned off the square, and then the rings worth drawing are a
     // band, not a disc: everything inside the near edge is off screen too.
     var far = 0;
-    [[0, 0], [size.w, 0], [0, size.h], [size.w, size.h]].forEach(function (q) {
+    [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].forEach(function (q) {
       far = Math.max(far, Math.hypot(q[0] - c.x, q[1] - c.y));
     });
-    var nx = Math.max(0, Math.max(0 - c.x, c.x - size.w));
-    var ny = Math.max(0, Math.max(0 - c.y, c.y - size.h));
+    var nx = Math.max(0, Math.max(x0 - c.x, c.x - x1));
+    var ny = Math.max(0, Math.max(y0 - c.y, c.y - y1));
     var near = Math.hypot(nx, ny);
 
     var step = ringNow = Core.ringStep(far / k, k);
@@ -1807,7 +1895,7 @@
               if (off < 18) continue;
             }
             var lx = c.x + px * Math.sin(th), ly = c.y - px * Math.cos(th);
-            if (lx > 26 && lx < size.w - 26 && ly > 15 && ly < size.h - 6) lab = { x: lx, y: ly };
+            if (lx > x0 + 26 && lx < x1 - 26 && ly > y0 + 15 && ly < y1 - 6) lab = { x: lx, y: ly };
           }
         }
       }
@@ -1837,9 +1925,14 @@
 
     // The envelope is a ring on the ground, so on a map it is a ring.
     if (w.max && firingSet()) {
+      // Clipped like the range rings: a circle on the ground stops where the
+      // ground does. The markers themselves are not, or a name on the eastern
+      // edge would lose half its letters.
+      s.push('<g clip-path="url(#mapClip)">');
       [w.min, w.max].forEach(function (rad) {
         s.push(svgDot(f, (rad * k).toFixed(1), null, "var(--b-close)", 0.4, "4 4"));
       });
+      s.push('</g>');
     }
 
     state.targets.forEach(function (t) {
@@ -1978,6 +2071,15 @@
   }
 
   function drawBoard() {
+    furn = null;
+    var tl = toBoard({ x: 0, y: TERRAIN }), br = toBoard({ x: TERRAIN, y: 0 });
+    placeFurniture(tl, br);
+    // A circle drawn on the ground stops at the edge of the square, the way
+    // the game's do. Everything else on the board is inside it already.
+    mapClipRect.setAttribute("x", tl.x.toFixed(1));
+    mapClipRect.setAttribute("y", tl.y.toFixed(1));
+    mapClipRect.setAttribute("width", Math.max(0, br.x - tl.x).toFixed(1));
+    mapClipRect.setAttribute("height", Math.max(0, br.y - tl.y).toFixed(1));
     if (bg) {
       var p = toBoard({ x: bg.ox, y: bg.oy });
       var k = zoomK();
