@@ -243,6 +243,77 @@ that cannot be matched.
 - Resolution is unchanged. 6.4 m per source pixel still cannot show a building,
   and a result rounded to the metre still does not imply metre placement.
 
+## Control zone and faction bases, 20 September 2026
+
+The board draws each map's control zone and three faction bases (`GROUND` in
+`src/page.html`) so a player can find themselves on it the way they would on
+the in-game map. These are game coordinates drawn in world space, not image
+features: they are as good as their source, whatever the render beneath them.
+
+Each capture was read through its own axis ticks, with the same `find_ticks`
+that `tools/register-overview.py` uses, so none of this depends on our raster.
+
+### Bases
+
+The corners are the Apollyon definitions' `polygons` (`<FACTION> Spawn`) at the
+commit cited above: 480 m squares, each rotated as the game draws it. Against
+the centroid of each faction-coloured square in our overviews:
+
+| Map | Base | Apollyon minus capture | capture px |
+| --- | --- | --- | --- |
+| Ozeti | Manticore | +74 m E, -18 m N | 15.5 m |
+| Ozeti | Valkyra | -6 m E, -18 m N | 15.5 m |
+| Ozeti | Lonestar | +41 m E, +24 m N | 15.5 m |
+| Zestafona | Manticore | +47 m E, -8 m N | 15.8 m |
+| Zestafona | Valkyra | +26 m E, -4 m N | 15.8 m |
+| Zestafona | Lonestar | +42 m E, +41 m N | 15.8 m |
+
+Worst 76 m, which is about five capture pixels. The centroid includes the faction
+icon, which is not drawn at the square's centre, so a few pixels of bias is
+expected from the reading method. The corners ship as Apollyon has them, the
+citable source, with this as corroboration.
+
+Both sources put the same faction on the same base on both maps, from separate
+matches, so the assignment is treated as fixed. If a mode ever swaps sides, the
+squares stay right and the names go wrong.
+
+**Bakurani's bases are Apollyon's alone.** Its only overview shows the player
+marker and no objectives, so nothing here corroborates them.
+
+### Zones
+
+Apollyon has no zones (`zones` empty or absent), so these were measured. A
+circle was fitted by least squares to the zone's outline pixels, with icons and
+fill rejected as outliers:
+
+| Map | Capture | m/px | Centre | Radius | Fit |
+| --- | --- | --- | --- | --- | --- |
+| Ozeti | close-up, 100 m ticks | 1.38 | x97.78 y62.45 | 551 m | 1,728 px, 1.2 px RMS, ~190 deg of arc |
+| Ozeti | overview | 15.5 | x97.43 y62.64 | 537 m | 261 px, 0.8 px RMS |
+| Zestafona | overview | 15.8 | x69.66 y100.58 | 490 m | 286 px, 0.7 px RMS |
+
+Ozeti ships the close-up's result, with a radius of 550 m. Only about half of that
+circle is inside the close-up's frame, but the arc is long and 11 times finer
+than the overview's. The two captures were taken hours apart and agree to 40 m
+on the centre and 14 m on the radius, which is under one overview pixel and fits
+a zone that does not move. A third capture, a close zoom on Tower 2, shows the
+zone's edge where this circle puts it.
+
+Zestafona has the overview only, so its zone is good to about a pixel, 16 m.
+The same method read Ozeti's radius 14 m small against the close-up, so
+Zestafona's is probably nearer 500 m than 490 m. That is recorded and not
+corrected.
+
+The zone's colour follows whoever holds it: blue, green and cyan all appear
+across these captures. The board draws it neutral.
+
+**Bakurani has no zone.** A zoomed-out capture with the zone visible would
+settle it, or two Mark Coordinates lines, one at its centre and one on its edge.
+
+As a final check, the shipped coordinates were drawn back onto all three
+captures through their tick calibration. Every square and circle lands on the
+shape the game drew.
+
 ## Calibration completion procedure
 
 For each map, retain a dated current-game overview and zoomed landmark captures with game coordinates. Match at least three well-separated locations to the raster to detect translation, scale, and orientation errors. If more than a translation/scale is needed, investigate crop/aspect/projection before introducing a more flexible transform. Check additional independent points after fitting; record residual errors in meters and the resolution of the source evidence. Keep numerical distance checks separate from imagery checks.

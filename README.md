@@ -126,6 +126,18 @@ its maximum, and for the SPH-2 a third at 1070 m where the low arc starts. The
 line from the gun to the target is drawn in the verdict colour -- green, orange
 or red -- so the line itself says whether the shot is on.
 
+Under the gun's rings, each map carries the ground a player orients by: the
+**control zone** as a pale circle, and the three **faction bases** as squares
+in the game's own colours -- Manticore green, Valkyra red, Lonestar blue --
+each named above it and turned the way the game draws it. They are there so
+the board and the in-game map can be matched at a glance. The zone is drawn
+neutral because in game it takes the colour of whoever holds it. They are game
+coordinates drawn in world space like the pins, so they sit right against the
+grid even where the render beneath is only placed to ~110 m. Bakurani has its
+bases but no zone yet: no capture has shown it. The base squares come from the
+Apollyon calculator and were checked against our own captures; the zones were
+measured off those captures. `docs/MAP-REFERENCE-REVIEW.md` has both.
+
 ### What the numbers are, and are not
 
 Range is `hypot(tx - gx, ty - gy)` on world coordinates in metres, never on
@@ -291,6 +303,10 @@ The geometry behind the cut features is still in `src/ruler-core.js` and still
 tested -- `ringStep` and `readPoi` in particular -- so rings and landmarks
 could come back without re-deriving anything. `maps/poi/README.md` still
 documents the landmark file format for the same reason; nothing reads it today.
+
+The control zone and faction bases, added on 20 September 2026, are not a
+return of the overlays. They are fixed per map, with no toggle, because they
+are what a player finds themselves by.
 
 ## Layout
 

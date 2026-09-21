@@ -33,6 +33,9 @@
     --red: #e06b6b;
     --grn: #66b778;
     --org: #e0913f;
+    --man: #82c596;
+    --val: #d86666;
+    --lon: #5fa8d3;
     --letterbox: #090b0a;
     --hair: #1a1f19;
     --mono: 'Share Tech Mono', ui-monospace, monospace;
@@ -192,6 +195,17 @@
   font-family: var(--mono);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+}
+
+/* These sit on terrain rather than in the margin, so they get a halo. */
+.ovl .olab text {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+  paint-order: stroke;
+  stroke: var(--letterbox);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 .pin {
@@ -1288,6 +1302,41 @@
   };
   var MAP_ORDER = ["bakurani", "ozeti", "zestafona"];
 
+  /* The control zone and the three faction bases: fixed per map, and what a
+     player finds themselves by on the in-game map. World metres, drawn in
+     world space like the pins, so the render under them does not move them.
+     Base corners are the Apollyon calculator's (MIT, commit 6a9fcd9); our own
+     captures put every one of the six on Ozeti and Zestafona within 76 m of
+     it, on the same side of the map. Apollyon has no zones, so those were
+     fitted to the circle in those captures. None shows Bakurani's zone yet.
+     The record is in docs/MAP-REFERENCE-REVIEW.md. */
+  var GROUND = {
+    bakurani: {
+      zone: null,
+      bases: [
+        { side: "manticore", pts: [[3868, 7988], [4339, 7885], [4235, 7415], [3765, 7518]] },
+        { side: "valkyra", pts: [[11750, 7376], [12122, 7071], [11818, 6699], [11445, 7004]] },
+        { side: "lonestar", pts: [[8308, 3527], [8772, 3651], [8897, 3186], [8432, 3062]] }
+      ]
+    },
+    ozeti: {
+      zone: { x: 9778, y: 6245, r: 550 },
+      bases: [
+        { side: "manticore", pts: [[6922, 9085], [7309, 8798], [7022, 8412], [6636, 8699]] },
+        { side: "valkyra", pts: [[13398, 6851], [13858, 6992], [13999, 6532], [13539, 6391]] },
+        { side: "lonestar", pts: [[8152, 3403], [8633, 3403], [8633, 2921], [8153, 2922]] }
+      ]
+    },
+    zestafona: {
+      zone: { x: 6966, y: 10058, r: 490 },
+      bases: [
+        { side: "manticore", pts: [[10330, 11171], [10191, 11631], [10651, 11769], [10789, 11310]] },
+        { side: "valkyra", pts: [[4027, 12188], [3570, 12336], [3718, 12793], [4175, 12645]] },
+        { side: "lonestar", pts: [[6513, 6482], [6631, 6947], [7096, 6827], [6978, 6362]] }
+      ]
+    }
+  };
+
   /* Community measurement on level ground, not published by Bulkhead. */
   var WEAPONS = {
     l81: { name: "L81 Mortar", short: "MORTAR", sub: "Man-placed, high arc only",
@@ -1313,6 +1362,14 @@
   var C_EDGE = tok("--txf", "#6f7a6c");
   var C_CHIPBRD = tok("--brdo", "#23271f");
   var VERDICT = { short: C_RED, far: C_RED, high: C_ORG, ok: C_GRN };
+  // The game's own faction colours. The zone has none of its own: in game it
+  // takes the colour of whoever holds it, so here it is drawn neutral.
+  var C_ZONE = tok("--tx", "#e4e0d4");
+  var FACTIONS = {
+    manticore: { name: "MANTICORE", colour: tok("--man", "#82c596") },
+    valkyra: { name: "VALKYRA", colour: tok("--val", "#d86666") },
+    lonestar: { name: "LONESTAR", colour: tok("--lon", "#5fa8d3") }
+  };
 
   /* ---- state ---- */
   var state = {
@@ -1593,6 +1650,30 @@
       labels.push('<text x="5" y="' + (toScreen({ x: 0, y: gy }).y - 4).toFixed(1) +
         '" fill="' + C_EDGE + '" text-anchor="start">' + (gy / UNIT).toFixed(0) + '</text>');
     }
+
+    /* the fixed ground a player orients by: the zone and the three bases */
+    var ground = GROUND[mapId()], names = [];
+    ground.bases.forEach(function (b) {
+      var f = FACTIONS[b.side];
+      var pts = b.pts.map(function (p) { return toScreen({ x: p[0], y: p[1] }); });
+      var top = Math.min.apply(null, pts.map(function (p) { return p.y; }));
+      var mid = pts.reduce(function (sum, p) { return sum + p.x; }, 0) / pts.length;
+      parts.push('<polygon points="' + pts.map(function (p) {
+        return p.x.toFixed(1) + "," + p.y.toFixed(1);
+      }).join(" ") + '" fill="' + f.colour + '" fill-opacity=".16" stroke="' + f.colour +
+        '" stroke-opacity=".85" stroke-width="1.2"/>');
+      names.push('<text x="' + mid.toFixed(1) + '" y="' + (top - 6).toFixed(1) +
+        '" fill="' + f.colour + '" text-anchor="middle">' + f.name + '</text>');
+    });
+    if (ground.zone) {
+      var zc = toScreen(ground.zone), zr = ground.zone.r * kk;
+      parts.push('<circle cx="' + zc.x.toFixed(1) + '" cy="' + zc.y.toFixed(1) +
+        '" r="' + zr.toFixed(1) + '" fill="' + C_ZONE + '" fill-opacity=".06" stroke="' + C_ZONE +
+        '" stroke-opacity=".6" stroke-width="1.2"/>');
+      names.push('<text x="' + zc.x.toFixed(1) + '" y="' + (zc.y - zr - 6).toFixed(1) +
+        '" fill="' + C_ZONE + '" fill-opacity=".85" text-anchor="middle">CONTROL ZONE</text>');
+    }
+    parts.push('<g class="olab">' + names.join("") + '</g>');
 
     /* what the gun can reach from where it stands */
     if (s.gun) {
