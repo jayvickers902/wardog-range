@@ -667,6 +667,69 @@
 }
 
 /* ---- setup overlay ---- */
+.load-num {
+  color: var(--txm);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.load-bar {
+  height: 3px;
+  margin-top: 12px;
+  overflow: hidden;
+  background: var(--brd);
+  border-radius: 2px;
+}
+
+.load-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--gold);
+  transition: width .2s linear;
+}
+
+.load-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 30px;
+  margin-top: 10px;
+}
+
+.load-note {
+  color: var(--txf);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+}
+
+.load-skip {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--brds);
+  border-radius: 4px;
+  color: var(--gold);
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .16em;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+
+.load-skip:hover {
+  border-color: var(--gold);
+}
+
+.load-skip[hidden] {
+  display: none;
+}
+
 .setup {
   position: fixed;
   inset: 0;
@@ -1018,6 +1081,18 @@
       </div>
       <div class="wpn-grid" id="wpnGrid"></div>
     </div>
+    <div class="step" id="loadStep">
+      <div class="step-head">
+        <span class="step-lbl" id="loadLbl">03&nbsp;&nbsp;MAP DETAIL</span>
+        <span class="step-rule"></span>
+        <span class="load-num" id="loadNum"></span>
+      </div>
+      <div class="load-bar"><span class="load-fill" id="loadFill"></span></div>
+      <div class="load-foot">
+        <span class="load-note">ONCE PER MAP · KEPT FOR NEXT TIME</span>
+        <button class="load-skip" id="loadSkip" type="button" hidden>START ANYWAY</button>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -1138,6 +1213,7 @@
   /* ---- state ---- */
   var state = {
     setupOpen: true,
+    holding: false,           // setup stays up only because the map is still downloading
     map: null,
     weapon: null,
     gun: null,
@@ -1247,6 +1323,8 @@
   var elGunLbl = $("gunLbl"), elArmGun = $("armGun"), elArmTgt = $("armTgt");
   var elPaste = $("pasteIn"), elSavedList = $("savedList");
   var elSetup = $("setup"), elStep2 = $("step2"), elMapGrid = $("mapGrid"), elWpnGrid = $("wpnGrid");
+  var elLoad = $("loadStep"), elLoadLbl = $("loadLbl"), elLoadNum = $("loadNum");
+  var elLoadFill = $("loadFill"), elLoadSkip = $("loadSkip");
   var fields = {
     gunx: $("gunX"), guny: $("gunY"),
     targetx: $("tgtX"), targety: $("tgtY")
@@ -1257,7 +1335,7 @@
     elMapGrid.innerHTML = MAP_ORDER.map(function (id) {
       var d = MAPS[id];
       return '<button class="mcard" type="button" data-id="' + id + '">' +
-        '<span class="mcard-art" style="background-image:url(\'maps/' + id + '.webp\')"></span>' +
+        '<span class="mcard-art" style="background-image:url(\'' + mapUrl(id + ".webp") + '\')"></span>' +
         '<span class="mcard-scrim"></span>' +
         '<span class="mcard-txt">' +
         '<span class="mcard-name">' + d.name + '</span>' +
@@ -1281,17 +1359,181 @@
      metre, so past the first few steps it is only being stretched. Tiles cut
      by tools/cut-tiles.py sit over it, named by how many span the map: 64 x
      512 px over 16,384 m is 0.5 m per pixel. The coarse levels cover the whole
-     map, the fine ones a square round the control zone. build.py reads which
-     tiles exist off the disk and writes their extents in below, so nothing is
+     map, the fine ones a square round the control zone. build.py reads what
+     exists off the disk and writes it in below -- each level's extent, each
+     map's size, and a version that changes with any map file -- so nothing is
      asked for that was not cut; an unbuilt page has none and draws the
-     overview alone. Only the squares on screen are fetched, and the overview
-     stays underneath, so a square still loading shows coarse ground, not a
-     hole. */
+     overview alone. The version rides on every map URL, which is what lets
+     serve.py mark them cacheable for good. */
   var TILE_PX = 512;
   var OVERVIEW_PX = 2560;
-  var TILE_COVER = /* INLINE_TILE_COVER */{};
-  var tileNodes = {};     // "map/across/x_y" -> { el, map, across, x, y, done, ok }
+  var TILE_MARGIN = 160;  // screen px round the view whose tiles are decoded ahead of a pan
+  var TILES = /* INLINE_TILES */{};
+  var MAP_V = TILES.v ? "?v=" + TILES.v : "";
+  var tileNodes = {};     // id -> { el, map, id, across, x, y, done, ok, tries, gone }
 
+  function mapUrl(path) { return "maps/" + path + MAP_V; }
+  function tileMeta(map) { return (TILES.maps && TILES.maps[map]) || null; }
+  function tileCover(map) { var m = tileMeta(map); return m ? m.levels : {}; }
+  function tileId(map, t) { return map + "/" + t.across + "/" + t.x + "_" + t.y; }
+  function tileUrl(id) { return mapUrl("tiles/" + id + ".webp"); }
+
+  /* ---- the map download ----
+     Blurry patches are the board waiting on the network one square at a
+     time. So the first time a map is picked, every tile it has is fetched up
+     front -- while the player chooses a weapon, then behind a progress bar --
+     and kept in Cache Storage, where the next visit finds it and reads it off
+     the disk instead. Either way each square is in memory before it is ever
+     on screen. START ANYWAY lets the player in early: the download carries on
+     underneath, coarse levels first so the whole map has sharper ground under
+     it soonest, and anything on screen that has not arrived yet is fetched
+     directly. */
+  var PACK_CACHE = "wardog-tiles-" + (TILES.v || "none");
+  var PACK_WORKERS = 16;
+  var pack = { map: null, urls: {} };
+  var cacheOpen = null;
+
+  function openCache() {
+    if (cacheOpen) return cacheOpen;
+    cacheOpen = Promise.resolve(null);
+    try {
+      if (window.caches && TILES.v) {
+        cacheOpen = caches.open(PACK_CACHE).then(function (c) {
+          // A recut changes the version, and the old one's tiles are dead weight.
+          caches.keys().then(function (names) {
+            names.forEach(function (n) {
+              if (n.indexOf("wardog-tiles-") === 0 && n !== PACK_CACHE) caches.delete(n);
+            });
+          }).catch(function () {});
+          return c;
+        }).catch(function () { return null; });
+      }
+    } catch (e) {}
+    return cacheOpen;
+  }
+  function markUrl(map) { return mapUrl("tiles/" + map + "/complete"); }
+
+  // Coarsest level first, and within a level the middle of what was cut
+  // first, which for the fine levels is the control zone.
+  function packList(map) {
+    var cover = tileCover(map), out = [];
+    Object.keys(cover).map(Number).sort(function (a, b) { return a - b; }).forEach(function (n) {
+      var b = cover[n], mx = (b[0] + b[2]) / 2, my = (b[1] + b[3]) / 2, lv = [];
+      for (var y = b[1]; y < b[3]; y++) {
+        for (var x = b[0]; x < b[2]; x++) {
+          lv.push({ id: tileId(map, { across: n, x: x, y: y }),
+                    d: (x + 0.5 - mx) * (x + 0.5 - mx) + (y + 0.5 - my) * (y + 0.5 - my) });
+        }
+      }
+      lv.sort(function (p, q) { return p.d - q.d; });
+      lv.forEach(function (t) { out.push(t.id); });
+    });
+    return out;
+  }
+
+  function later(ms) { return new Promise(function (done) { setTimeout(done, ms); }); }
+  // A burst of these once overran serve.py's connection backlog and came back
+  // as 502s. That is fixed there, but a miss is still tried again before it
+  // counts, since any hop in between can drop one.
+  function fetchTile(url, tries) {
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r;
+    }).catch(function (e) {
+      if (tries <= 1) throw e;
+      return later(700).then(function () { return fetchTile(url, tries - 1); });
+    });
+  }
+  function getTile(cache, url) {
+    var hit = cache ? cache.match(url).catch(function () { return null; }) : Promise.resolve(null);
+    return hit.then(function (r) {
+      if (r) return r.blob();
+      return fetchTile(url, 3).then(function (r) {
+        if (cache) cache.put(url, r.clone()).catch(function () {});
+        return r.blob();
+      });
+    }).catch(function () { return null; });
+  }
+
+  function packReady(map) {
+    return !tileMeta(map) || (pack.map === map && !!(pack.done || pack.stored));
+  }
+
+  function loadPack(map) {
+    if (pack.map === map) return;
+    var old = pack.urls;
+    Object.keys(old).forEach(function (id) { URL.revokeObjectURL(old[id]); });
+    var meta = tileMeta(map);
+    var p = pack = {
+      map: map, list: meta ? packList(map) : [], urls: {}, got: 0, bytes: 0,
+      of: meta ? meta.bytes : 0, failed: 0, checked: false, stored: false, done: false
+    };
+    if (!p.list.length) { p.checked = p.done = true; return; }
+    openCache().then(function (cache) {
+      var mark = cache ? cache.match(markUrl(map)).catch(function () { return null; }) : Promise.resolve(null);
+      return mark.then(function (m) {
+        if (p !== pack) return;
+        p.checked = true;
+        p.stored = !!m;
+        // Picked on an earlier visit but never finished: that visit's player
+        // lands on the board, so bring the bar up over it.
+        if (!p.stored && state.map === map && state.weapon && !state.setupOpen) {
+          state.setupOpen = true;
+          state.holding = true;
+        }
+        // And a weapon picked in the moment before the disk answered.
+        if (p.stored && state.holding && state.map === map) {
+          state.holding = false;
+          state.setupOpen = false;
+        }
+        requestRender();
+        var next = 0;
+        function worker() {
+          if (p !== pack || next >= p.list.length) return Promise.resolve();
+          var id = p.list[next++];
+          return getTile(cache, tileUrl(id)).then(function (blob) {
+            if (p !== pack) return;
+            if (blob) {
+              p.urls[id] = URL.createObjectURL(blob);
+              p.bytes += blob.size;
+            } else {
+              p.failed++;
+            }
+            p.got++;
+            requestRender();
+          }).then(worker);
+        }
+        var workers = [];
+        for (var w = 0; w < PACK_WORKERS; w++) workers.push(worker());
+        return Promise.all(workers).then(function () {
+          if (p !== pack) return;
+          p.done = true;
+          if (cache && !p.failed) cache.put(markUrl(map), new Response("")).catch(function () {});
+          if (state.holding && state.map === map) {
+            state.holding = false;
+            state.setupOpen = false;
+          }
+          requestRender();
+        });
+      });
+    });
+  }
+
+  function drawLoad() {
+    // Only a real download shows. A map read back off the disk is ready
+    // before anyone could zoom in far enough to need it.
+    var p = state.map && pack.map === state.map && pack.checked && !pack.stored && pack.list.length ? pack : null;
+    elLoad.hidden = !Object.keys(TILES.maps || {}).length;
+    elLoad.style.visibility = p ? "" : "hidden";
+    if (!p) return;
+    setText(elLoadLbl, "03\u00a0\u00a0" + (p.done ? "MAP DETAIL READY" : "LOADING MAP DETAIL"));
+    setText(elLoadNum, mapDef().name.toUpperCase() + " · " + (p.bytes / 1e6).toFixed(1) + " / " +
+      (p.of / 1e6).toFixed(1) + " MB");
+    elLoadFill.style.width = (p.done ? 100 : Math.min(100, 100 * p.bytes / (p.of || 1))).toFixed(1) + "%";
+    elLoadSkip.hidden = !state.holding || p.done;
+  }
+
+  /* ---- drawing the tiles ---- */
   function tileBox(n) {
     // Edges snap to device pixels, and a tile's edge is computed from the same
     // world line as its neighbour's, so they meet without a hairline between.
@@ -1308,45 +1550,84 @@
     st.width = box.w + "px";
     st.height = box.h + "px";
   }
+  // A tile counts as ready once it is decoded, not merely downloaded, so
+  // nothing that replaces it is taken down while it would still paint blank.
   function tileNode(map, t) {
-    var el = document.createElement("img");
-    var n = { el: el, map: map, across: t.across, x: t.x, y: t.y, done: false, ok: false };
+    var el = document.createElement("img"), id = tileId(map, t);
+    var n = { el: el, map: map, id: id, across: t.across, x: t.x, y: t.y,
+              done: false, ok: false, tries: 0, gone: false };
     el.alt = "";
     el.draggable = false;
     el.decoding = "async";
     el.style.zIndex = String(t.across);     // finer levels paint over coarser
-    el.onload = function () { n.done = n.ok = true; requestRender(); };
-    el.onerror = function () { n.done = true; el.style.visibility = "hidden"; requestRender(); };
-    el.src = "maps/tiles/" + map + "/" + t.across + "/" + t.x + "_" + t.y + ".webp";
+    function show(src) {
+      el.src = src;
+      el.decode().then(function () {
+        if (n.gone) return;
+        n.done = n.ok = true;
+        requestRender();
+      }, function () {
+        if (n.gone) return;
+        if (++n.tries < 3) {
+          later(700 * n.tries).then(function () { if (!n.gone) show(tileUrl(id)); });
+        } else {
+          n.done = true;
+          el.style.visibility = "hidden";
+          requestRender();
+        }
+      });
+    }
+    show((pack.map === map && pack.urls[id]) || tileUrl(id));
     elGround.appendChild(el);
     return n;
   }
 
   function drawTiles() {
-    var map = mapId(), W = state.size.w, H = state.size.h;
+    var map = mapId(), W = state.size.w, H = state.size.h, cover = tileCover(map);
+    var m = TILE_MARGIN / k();
     var tl = toWorld({ x: 0, y: 0 }), br = toWorld({ x: W, y: H });
-    var plan = Core.tilePlan(TILE_COVER[map],
-      { minX: tl.x, maxX: br.x, minY: br.y, maxY: tl.y },
+    var plan = Core.tilePlan(cover,
+      { minX: tl.x - m, maxX: br.x + m, minY: br.y - m, maxY: tl.y + m },
       1 / (k() * (window.devicePixelRatio || 1)), TERRAIN, TILE_PX, TERRAIN / OVERVIEW_PX);
+    var levels = Object.keys(cover).map(Number).sort(function (a, b) { return a - b; });
     var want = {}, ready = true;
-    plan.forEach(function (t) {
-      var id = map + "/" + t.across + "/" + t.x + "_" + t.y;
+    function onScreen(box) { return box.l < W && box.t < H && box.l + box.w > 0 && box.t + box.h > 0; }
+    function use(t) {
+      var id = tileId(map, t);
       var n = tileNodes[id] || (tileNodes[id] = tileNode(map, t));
+      var box = tileBox(n);
       want[id] = true;
-      placeTile(n, tileBox(n));
-      if (!n.done) ready = false;
+      placeTile(n, box);
+      return { n: n, box: box };
+    }
+    plan.forEach(function (t) {
+      var u = use(t);
+      if (u.n.done || !onScreen(u.box)) return;
+      ready = false;
+      // Until it arrives, the nearest coarser square that is already here
+      // stands in for it, rather than the overview far below.
+      for (var i = levels.indexOf(t.across) - 1; i >= 0; i--) {
+        var c = levels[i], b = cover[c], f = c / t.across;
+        var q = { across: c, x: Math.floor(t.x * f), y: Math.floor(t.y * f) };
+        if (q.x < b[0] || q.x >= b[2] || q.y < b[1] || q.y >= b[3]) continue;
+        var qid = tileId(map, q);
+        if ((tileNodes[qid] && tileNodes[qid].ok) || (pack.map === map && pack.urls[qid])) {
+          use(q);
+          break;
+        }
+      }
     });
-    // Tiles from the last zoom stay up until every one of this zoom's has
-    // arrived, so stepping between levels never flashes back to the blurry
-    // overview. Anything off screen, or never loaded, goes straight away.
+    // Tiles from the last zoom stay up until every one of this zoom's on
+    // screen is decoded, so stepping between levels never flashes back to the
+    // blurry overview. Anything off screen, or never loaded, goes at once.
     Object.keys(tileNodes).forEach(function (id) {
       if (want[id]) return;
       var n = tileNodes[id], box = n.ok && n.map === map && !ready ? tileBox(n) : null;
-      if (box && box.l < W && box.t < H && box.l + box.w > 0 && box.t + box.h > 0) {
+      if (box && onScreen(box)) {
         placeTile(n, box);
         return;
       }
-      n.el.onload = n.el.onerror = null;
+      n.gone = true;
       n.el.removeAttribute("src");
       if (n.el.parentNode) n.el.parentNode.removeChild(n.el);
       delete tileNodes[id];
@@ -1377,6 +1658,7 @@
 
     /* setup overlay */
     elSetup.hidden = !s.setupOpen;
+    drawLoad();
     elStep2.classList.toggle("is-waiting", !s.map);
     Array.prototype.forEach.call(elMapGrid.children, function (b) {
       b.classList.toggle("is-on", b.getAttribute("data-id") === s.map);
@@ -1398,7 +1680,7 @@
     elRaster.style.top = tl.y.toFixed(1) + "px";
     elRaster.style.width = (br.x - tl.x).toFixed(1) + "px";
     elRaster.style.height = (br.y - tl.y).toFixed(1) + "px";
-    elRaster.style.backgroundImage = "url('maps/" + mapId() + ".webp')";
+    elRaster.style.backgroundImage = "url('" + mapUrl(mapId() + ".webp") + "')";
     elGround.style.filter = toneFilter(d);
     drawTiles();
     elMap.classList.toggle("is-panning", !!(s.drag && s.drag.kind === "pan"));
@@ -1796,6 +2078,7 @@
   /* ---- setup ---- */
   $("ctxBtn").addEventListener("click", function () {
     state.setupOpen = true;
+    state.holding = false;
     requestRender();
   });
   elMapGrid.addEventListener("click", function (e) {
@@ -1803,6 +2086,8 @@
     if (!b) return;
     // Picking a map is destructive on purpose: it doubles as start over.
     state.map = b.getAttribute("data-id");
+    state.holding = false;
+    loadPack(state.map);
     state.gun = null;
     state.target = null;
     state.arm = "gun";
@@ -1815,8 +2100,16 @@
     var b = e.target.closest(".wcard");
     if (!b) return;
     state.weapon = b.getAttribute("data-id");
-    state.setupOpen = !state.map;
+    // With the map still downloading, the setup stays up as a loading screen
+    // and closes itself when the last tile lands.
+    state.setupOpen = !state.map || !packReady(state.map);
+    state.holding = state.setupOpen && !!state.map;
     persist();
+    requestRender();
+  });
+  elLoadSkip.addEventListener("click", function () {
+    state.holding = false;
+    state.setupOpen = false;
     requestRender();
   });
 
@@ -1830,6 +2123,7 @@
     requestRender();
   }
   load();
+  if (state.map) loadPack(state.map);
   buildCards();
   new ResizeObserver(measure).observe(elMap);
   measure();

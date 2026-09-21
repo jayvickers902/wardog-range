@@ -275,16 +275,56 @@ The fine levels add 39 MB to the 41 MB the coarse ones already were.
 The board picks the coarsest level at least as sharp as the screen, counted in
 device pixels, and at each spot draws the finest level up to that one which
 has it -- so at full zoom the zone is 0.5 m and the ground just outside the
-square falls back to 1 m, then 2 m. Only the squares on screen are fetched. The
-previous level stays up until the new one has arrived, and the overview stays
-underneath everything, so a tile still loading shows coarse ground rather than
-a hole. All of it sits under the same tone filter as the overview.
+square falls back to 1 m, then 2 m. A tile counts as arrived once it is
+decoded, and until then the nearest coarser square already in hand stands in
+for it; the previous zoom's tiles stay up until the new ones are ready; and
+the overview stays underneath everything. All of it sits under the same tone
+filter as the overview.
 
 The page is never told by hand what exists. `build.py` reads the tile
-directories and writes each level's extent into `index.html`, so the page
-never asks for a tile that was not cut; a level that is not one full rectangle
-of tiles stops the build. `Core.tilePlan` in `src/ruler-core.js` does the
-choosing, with its own checks in the tests.
+directories and writes each level's extent into `index.html`, with each map's
+size and a version hash of every map file, so the page never asks for a tile
+that was not cut; a level that is not one full rectangle of tiles stops the
+build. `Core.tilePlan` in `src/ruler-core.js` does the choosing, with its own
+checks in the tests.
+
+### Downloading a map up front
+
+Blurry patches are the board waiting on the network one square at a time, so
+it does not wait that way. The first time a map is picked, every tile it has
+is fetched at once -- while the player picks a weapon, and after that behind
+a progress bar in the setup screen, which closes itself when the last one
+lands:
+
+| map | download |
+|---|---:|
+| Bakurani | 26.3 MB |
+| Ozeti | 33.7 MB |
+| Zestafona | 20.2 MB |
+
+Ozeti took about 15 s on a line throttled to 20 Mbit/s. **START ANYWAY** lets
+the player in early. The download carries on underneath, coarse levels first
+so the whole map has sharper ground under it soonest, and whatever is on
+screen and not yet downloaded is fetched directly.
+
+The tiles are kept in the browser's Cache Storage, so the wait is once per map
+per browser. Every later visit reads them back off the disk in well under a
+second, without the progress bar, and every tile is in memory before it is
+ever on screen. A map picked on an earlier visit whose download never finished
+brings the bar back up when the page opens. Nothing is aimed at phones: the
+full map comes down whatever the screen.
+
+Every map URL carries `?v=<hash of every map file>`, which `build.py` works
+out on each build. A recut changes it, so the old Cache Storage copy is
+dropped and nothing stale is ever reused. It also means one of those URLs never
+changes what it returns, so `serve.py` marks them
+`public, max-age=31536000, immutable` (and `vercel.json` does the same on
+Vercel). Cloudflare then answers for them from its edge instead of coming back
+down the tunnel to this machine, which used to cost about 160 ms a tile.
+`serve.py` also queues 128 waiting connections rather than Python's default
+5: a download opens sixteen at once, and every one past the fifth used to come
+back from the tunnel as a 502. A tile that fails anyway is tried twice more
+before it counts.
 
 Placement carries over untouched. Sampled 1 m and 0.5 m tiles, scaled down to
 2 m, land on the level-16 tiles under them at exactly 0 px offset, and those
@@ -358,12 +398,18 @@ are what a player finds themselves by.
     tools/              map calibration, and cutting tiles from the exports
     docs/               the distance-map plan and the map reference review
     design_handoff_wardog_range/   the design this page was built to
-    serve.py            local static server
+    serve.py            static server; also what the tunnel serves publicly
+    vercel.json         cache headers for maps/ on Vercel
 
 `maps/` sits next to `index.html` and is referenced by relative path, so it
 travels with a normal deploy.
 
 Edit `src/page.html`, then `python build.py`. Never edit `index.html`.
+
+`serve.py` is also the public site (see **Serving**), so a rebuilt
+`index.html` is live the moment it is written. `python build.py preview.html`
+writes a scratch copy beside it instead -- same maps, same relative paths --
+to try at `/preview.html` first. It is ignored by git and by Vercel.
 
 The parsing, the distance model, the camera transforms, the weapon envelope,
 the drive time, the view fitting and the grid spacing live in
