@@ -159,11 +159,26 @@
   cursor: grabbing;
 }
 
+/* The overview and the finer tiles over it, under one tone filter so a tile
+   never reads as a brighter patch than the ground around it. */
+.ground {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .raster {
   position: absolute;
   background-size: 100% 100%;
   background-repeat: no-repeat;
   pointer-events: none;
+  user-select: none;
+}
+
+.ground img {
+  position: absolute;
+  display: block;
+  max-width: none;
   user-select: none;
 }
 
@@ -886,7 +901,9 @@
   <div class="body">
 
     <div class="map" id="map">
-      <div class="raster" id="raster"></div>
+      <div class="ground" id="ground">
+        <div class="raster" id="raster"></div>
+      </div>
       <div class="vig"></div>
       <svg class="ovl" id="ovl"></svg>
       <div class="pin pin-gun" id="pinGun" hidden>
@@ -1222,7 +1239,7 @@
 
   /* ---- elements ---- */
   var $ = function (id) { return document.getElementById(id); };
-  var elMap = $("map"), elRaster = $("raster"), elOvl = $("ovl");
+  var elMap = $("map"), elGround = $("ground"), elRaster = $("raster"), elOvl = $("ovl");
   var elPinGun = $("pinGun"), elPinTgt = $("pinTgt"), elPinGunLbl = $("pinGunLbl");
   var elScale = $("scaleOut"), elHint = $("hintOut"), elCursor = $("cursorOut");
   var elCtxMap = $("ctxMap"), elCtxWpn = $("ctxWpn");
@@ -1257,6 +1274,83 @@
         '<span class="wcard-band">' + w.min + "–" + w.max + ' m</span>' +
         '</button>';
     }).join("");
+  }
+
+  /* ---- finer ground ----
+     The overview is 6.4 m per pixel and the board zooms in to a tenth of a
+     metre, so past the first few steps it is only being stretched. Tiles cut
+     by tools/cut-tiles.py sit over it, named by how many span the map: 64 x
+     512 px over 16,384 m is 0.5 m per pixel. The coarse levels cover the whole
+     map, the fine ones a square round the control zone. build.py reads which
+     tiles exist off the disk and writes their extents in below, so nothing is
+     asked for that was not cut; an unbuilt page has none and draws the
+     overview alone. Only the squares on screen are fetched, and the overview
+     stays underneath, so a square still loading shows coarse ground, not a
+     hole. */
+  var TILE_PX = 512;
+  var OVERVIEW_PX = 2560;
+  var TILE_COVER = /* INLINE_TILE_COVER */{};
+  var tileNodes = {};     // "map/across/x_y" -> { el, map, across, x, y, done, ok }
+
+  function tileBox(n) {
+    // Edges snap to device pixels, and a tile's edge is computed from the same
+    // world line as its neighbour's, so they meet without a hairline between.
+    var step = TERRAIN / n.across, dpr = window.devicePixelRatio || 1;
+    var a = toScreen({ x: n.x * step, y: TERRAIN - n.y * step });
+    var b = toScreen({ x: (n.x + 1) * step, y: TERRAIN - (n.y + 1) * step });
+    var l = Math.round(a.x * dpr) / dpr, t = Math.round(a.y * dpr) / dpr;
+    return { l: l, t: t, w: Math.round(b.x * dpr) / dpr - l, h: Math.round(b.y * dpr) / dpr - t };
+  }
+  function placeTile(n, box) {
+    var st = n.el.style;
+    st.left = box.l + "px";
+    st.top = box.t + "px";
+    st.width = box.w + "px";
+    st.height = box.h + "px";
+  }
+  function tileNode(map, t) {
+    var el = document.createElement("img");
+    var n = { el: el, map: map, across: t.across, x: t.x, y: t.y, done: false, ok: false };
+    el.alt = "";
+    el.draggable = false;
+    el.decoding = "async";
+    el.style.zIndex = String(t.across);     // finer levels paint over coarser
+    el.onload = function () { n.done = n.ok = true; requestRender(); };
+    el.onerror = function () { n.done = true; el.style.visibility = "hidden"; requestRender(); };
+    el.src = "maps/tiles/" + map + "/" + t.across + "/" + t.x + "_" + t.y + ".webp";
+    elGround.appendChild(el);
+    return n;
+  }
+
+  function drawTiles() {
+    var map = mapId(), W = state.size.w, H = state.size.h;
+    var tl = toWorld({ x: 0, y: 0 }), br = toWorld({ x: W, y: H });
+    var plan = Core.tilePlan(TILE_COVER[map],
+      { minX: tl.x, maxX: br.x, minY: br.y, maxY: tl.y },
+      1 / (k() * (window.devicePixelRatio || 1)), TERRAIN, TILE_PX, TERRAIN / OVERVIEW_PX);
+    var want = {}, ready = true;
+    plan.forEach(function (t) {
+      var id = map + "/" + t.across + "/" + t.x + "_" + t.y;
+      var n = tileNodes[id] || (tileNodes[id] = tileNode(map, t));
+      want[id] = true;
+      placeTile(n, tileBox(n));
+      if (!n.done) ready = false;
+    });
+    // Tiles from the last zoom stay up until every one of this zoom's has
+    // arrived, so stepping between levels never flashes back to the blurry
+    // overview. Anything off screen, or never loaded, goes straight away.
+    Object.keys(tileNodes).forEach(function (id) {
+      if (want[id]) return;
+      var n = tileNodes[id], box = n.ok && n.map === map && !ready ? tileBox(n) : null;
+      if (box && box.l < W && box.t < H && box.l + box.w > 0 && box.t + box.h > 0) {
+        placeTile(n, box);
+        return;
+      }
+      n.el.onload = n.el.onerror = null;
+      n.el.removeAttribute("src");
+      if (n.el.parentNode) n.el.parentNode.removeChild(n.el);
+      delete tileNodes[id];
+    });
   }
 
   /* ---- render ---- */
@@ -1305,7 +1399,8 @@
     elRaster.style.width = (br.x - tl.x).toFixed(1) + "px";
     elRaster.style.height = (br.y - tl.y).toFixed(1) + "px";
     elRaster.style.backgroundImage = "url('maps/" + mapId() + ".webp')";
-    elRaster.style.filter = toneFilter(d);
+    elGround.style.filter = toneFilter(d);
+    drawTiles();
     elMap.classList.toggle("is-panning", !!(s.drag && s.drag.kind === "pan"));
 
     drawOverlay(w, env);

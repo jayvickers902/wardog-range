@@ -199,8 +199,9 @@ order, accepts decimal commas, and refuses a bare pair unless it is the whole
 field, so a chat timestamp is never mistaken for a coordinate.
 
 `docs/MAP-REFERENCE-REVIEW.md` has the method, the residuals and the limits.
-Whatever the card says, 6.4 m per source pixel cannot show you a building --
-for a point you need to be exact about, type the coordinate.
+Sharp ground is not accurate ground: the tiles under the control zone go down
+to half a metre a pixel, but a placement is still only as good as the card
+says. For a point you need to be exact about, type the coordinate.
 
 ### The map image
 
@@ -216,8 +217,9 @@ dragged it into place.
 
 Downscaling that hard costs detail. At 2560 px one pixel is about 6.4 m --
 enough to recognise a village, a ridge or a road junction, not enough to read a
-building. The art is Bulkhead's, carried here small and lossy so the board is
-not a blank grid.
+building. That is what the tiles below are for; the overview is what you see
+zoomed out, and what shows through while a tile is still loading. The art is
+Bulkhead's, carried here small and lossy so the board is not a blank grid.
 
 They are also drawn the way the game draws its map, rather than as the bright
 green terrain renders they arrive as. The in-game map is very nearly greyscale
@@ -239,23 +241,59 @@ anyway.
 
 ### Tiles above the overview
 
-The repository also ships a tile pyramid, three times finer than the overview:
+Zooming in swaps the overview for finer tiles, one level at a time:
 
-    maps/tiles/<map>/8/<x>_<y>.webp     8 across   =  4,096 px   4 m per pixel
-    maps/tiles/<map>/16/<x>_<y>.webp   16 across   =  8,192 px   2 m per pixel
+    maps/tiles/<map>/8/<x>_<y>.webp     8 across    4,096 px   4 m/px    whole map
+    maps/tiles/<map>/16/<x>_<y>.webp   16 across    8,192 px   2 m/px    whole map
+    maps/tiles/<map>/32/<x>_<y>.webp   32 across   16,384 px   1 m/px    3.5 km round the zone
+    maps/tiles/<map>/64/<x>_<y>.webp   64 across   32,768 px   0.5 m/px  1.5 km round the zone
 
-The level is named by how many tiles span the map, so the path says what it is:
-16 tiles of 512 px over 16,384 m is 2 m per pixel. 320 tiles per map, 960 in
-all, 42 MB -- but only the squares actually on screen would ever be fetched.
+The level is named by how many 512 px tiles span the map, so the path says what
+it is: 64 tiles over 16,384 m is 0.5 m per pixel. Tile x counts from the west
+edge and y from the north.
 
-**The current board does not use them.** It draws the overview at every zoom.
-Wiring the pyramid back in is a straightforward win at high zoom and the loader
-that did it is in the history of `src/page.html`; nothing about the placement
-needs re-deriving, because every tile was checked against the overview it sits
-on and all nine sampled landed at exactly 0 m offset.
+The two coarse levels cover the whole map. The two fine ones cover a square
+round the control zone, because that is the ground people zoom in on, and the
+whole map at 0.5 m would be about 4,000 tiles and a few hundred megabytes a
+map. 1 m reaches past an SPH-2's 2,660 m from the far edge of the zone; 0.5 m
+covers the zone and everywhere a mortar can hit it from. Bakurani's zone has
+not been captured yet, so its square is centred on the middle of its three
+bases, which lands within about 170 m of the zone on the other two maps.
+
+The fine levels are only cut where the export really has that much detail.
+Ozeti and Zestafona are exported at 0.5 m per pixel, Bakurani at 1 m, so
+Bakurani stops at level 32 rather than being upsampled into a fake 0.5 m.
+
+| map | 8 | 16 | 32 | 64 | tiles | MB |
+|---|---|---|---|---|---:|---:|
+| Bakurani | whole | whole | 7.2 x 7.7 km | -- | 530 | 26.3 |
+| Ozeti | whole | whole | 7.2 x 7.7 km | 3.3 x 3.3 km | 699 | 33.7 |
+| Zestafona | whole | whole | 7.7 x 7.7 km | 3.3 x 3.3 km | 714 | 20.2 |
+
+The fine levels add 39 MB to the 41 MB the coarse ones already were.
+
+The board picks the coarsest level at least as sharp as the screen, counted in
+device pixels, and at each spot draws the finest level up to that one which
+has it -- so at full zoom the zone is 0.5 m and the ground just outside the
+square falls back to 1 m, then 2 m. Only the squares on screen are fetched. The
+previous level stays up until the new one has arrived, and the overview stays
+underneath everything, so a tile still loading shows coarse ground rather than
+a hole. All of it sits under the same tone filter as the overview.
+
+The page is never told by hand what exists. `build.py` reads the tile
+directories and writes each level's extent into `index.html`, so the page
+never asks for a tile that was not cut; a level that is not one full rectangle
+of tiles stops the build. `Core.tilePlan` in `src/ruler-core.js` does the
+choosing, with its own checks in the tests.
+
+Placement carries over untouched. Sampled 1 m and 0.5 m tiles, scaled down to
+2 m, land on the level-16 tiles under them at exactly 0 px offset, and those
+were checked against the overview the calibration was done on.
 
 `tools/cut-tiles.py` cuts them from the full-size exports, which are 0.4 to
-1.5 GB each and are not in the repository. It needs pyvips
+1.5 GB each and are not in the repository. `--levels 32,64` recuts just the
+fine ones; the size of the square is `DETAIL` at the top of the script. Run
+`python build.py` afterwards so the page learns the new extents. It needs pyvips
 (`pip install "pyvips[binary]"`), which streams the decode instead of wanting
 four gigabytes of memory for a 32,768 px source.
 
@@ -315,7 +353,7 @@ are what a player finds themselves by.
     build.py            wraps src/page.html into index.html
     index.html          generated; served locally and by Vercel
     maps/               shipped terrain renders, one WebP per map
-    maps/tiles/         the finer pyramid; cut, checked, not currently drawn
+    maps/tiles/         finer tiles, drawn over the overview as you zoom in
     tests/              regression checks for src/ruler-core.js
     tools/              map calibration, and cutting tiles from the exports
     docs/               the distance-map plan and the map reference review

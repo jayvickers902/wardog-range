@@ -442,6 +442,63 @@ check("grid thresholds are inclusive", () => {
   eq(Core.gridStep(0.34).minor, 100, "exactly 34 pixels");
 });
 
+/* ---- which tiles to draw ---- */
+
+// The shipped shape: 16,384 m, 512 px tiles, a 2,560 px overview underneath.
+// Levels 8 and 16 span the map; 64 covers a 4 x 4 square of its own tiles,
+// which is exactly tile 8_8 of level 16.
+const PX = 512, BASE = T / 2560;
+const WHOLE = { 8: [0, 0, 8, 8], 16: [0, 0, 16, 16] };
+const ZONE = { 8: [0, 0, 8, 8], 16: [0, 0, 16, 16], 64: [32, 32, 36, 36] };
+function ids(plan) { return plan.map((t) => t.across + "/" + t.x + "_" + t.y); }
+
+check("no tiles while the overview is as sharp as the screen", () => {
+  eq(Core.tilePlan(WHOLE, { minX: 0, maxX: T, minY: 0, maxY: T }, BASE, T, PX, BASE), [], "at the overview");
+  eq(Core.tilePlan(WHOLE, { minX: 0, maxX: T, minY: 0, maxY: T }, 20, T, PX, BASE), [], "zoomed out");
+});
+
+check("no tiles when nothing was cut", () => {
+  eq(Core.tilePlan({}, { minX: 0, maxX: 100, minY: 0, maxY: 100 }, 0.1, T, PX, BASE), []);
+  eq(Core.tilePlan(null, { minX: 0, maxX: 100, minY: 0, maxY: 100 }, 0.1, T, PX, BASE), []);
+});
+
+check("the coarsest level at least as sharp as the screen is the one fetched", () => {
+  // level 8 is 4 m/px, level 16 is 2 m/px; this rect is inside 8's tile 0_7
+  // and 16's tile 1_15 (both the southwest corner, rows counted from north)
+  const rect = { minX: 1100, maxX: 1200, minY: 100, maxY: 200 };
+  eq(ids(Core.tilePlan(WHOLE, rect, 5, T, PX, BASE)), ["8/0_7"], "5 m/px");
+  eq(ids(Core.tilePlan(WHOLE, rect, 4, T, PX, BASE)), ["8/0_7"], "exactly 4 m/px");
+  eq(ids(Core.tilePlan(WHOLE, rect, 3, T, PX, BASE)), ["16/1_15"], "3 m/px drops the covered 8");
+  eq(ids(Core.tilePlan(WHOLE, rect, 0.1, T, PX, BASE)), ["16/1_15"], "past the finest");
+});
+
+check("finer ground only where a finer level was cut", () => {
+  // Straddles level 64's east edge at x = 9,216 m, inside level 16's 8_8 and 9_8.
+  const rect = { minX: 9100, maxX: 9300, minY: 7500, maxY: 7600 };
+  eq(ids(Core.tilePlan(ZONE, rect, 0.4, T, PX, BASE)), ["16/9_8", "64/35_34"],
+    "16 east of the square, 64 inside it, and 16/8_8 left out under the 64s");
+});
+
+check("a coarse tile the fine square only partly covers is kept underneath", () => {
+  // 16/7_8 is west of the fine square, 16/8_8 wholly inside it
+  const rect = { minX: 7200, maxX: 8300, minY: 7700, maxY: 7900 };
+  eq(ids(Core.tilePlan(ZONE, rect, 0.4, T, PX, BASE)), ["16/7_8", "64/32_33"]);
+  const corner = { 8: [0, 0, 8, 8], 64: [32, 32, 34, 36] };  // one corner of 8's tile 4_4
+  eq(ids(Core.tilePlan(corner, { minX: 8200, maxX: 8300, minY: 7700, maxY: 7900 }, 0.4, T, PX, BASE)),
+    ["8/4_4", "64/32_33"], "partly covered 8 stays below the 64");
+});
+
+check("tile ranges stop at the map edge and at a view edge on a tile boundary", () => {
+  eq(ids(Core.tilePlan(WHOLE, { minX: -500, maxX: 1024, minY: T - 1024, maxY: T + 500 }, 1, T, PX, BASE)),
+    ["16/0_0"]);
+});
+
+check("levels paint coarsest first", () => {
+  const plan = Core.tilePlan(ZONE, { minX: 7100, maxX: 9300, minY: 7000, maxY: 8000 }, 0.4, T, PX, BASE);
+  const order = plan.map((t) => t.across);
+  eq(order.slice().sort((a, b) => a - b), order);
+});
+
 /* ------------------------------------------------------------------------ */
 
 function pick(p) { return p ? { x: p.x, y: p.y } : null; }

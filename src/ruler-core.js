@@ -234,11 +234,52 @@
     }
     return { major: major, minor: k * 100 >= 34 ? 100 : null };
   }
+  // Which map tiles to draw over rect, a world box in metres. cover says what
+  // was cut: { across: [x0, y0, x1, y1] }, a level named by how many tiles
+  // span the map, its extent in tile indices counted from the west and the
+  // north edge, x1 and y1 exclusive. The finest level worth fetching is the
+  // coarsest one at least as sharp as the screen (mpp, metres per device
+  // pixel), and each patch of ground gets the finest level up to that which
+  // has it: a tile is left out where a finer level wholly covers it. Coarsest
+  // first, so painting in order leaves the sharpest on top. Nothing at all
+  // while the overview underneath (baseMpp) is already as sharp as the screen.
+  function tilePlan(cover, rect, mpp, terrain, tilePx, baseMpp) {
+    var levels = Object.keys(cover || {}).map(Number)
+      .filter(function (n) { return n > 0; })
+      .sort(function (a, b) { return a - b; });
+    var out = [];
+    if (!levels.length || !(mpp < baseMpp)) return out;
+    var cap = levels.length - 1;
+    for (var i = 0; i < levels.length; i++) {
+      if (terrain / (levels[i] * tilePx) <= mpp) { cap = i; break; }
+    }
+    function hidden(tx, ty, n, li) {
+      for (var j = li + 1; j <= cap; j++) {
+        var b = cover[levels[j]], r = levels[j] / n;
+        if (tx * r >= b[0] && (tx + 1) * r <= b[2] && ty * r >= b[1] && (ty + 1) * r <= b[3]) return true;
+      }
+      return false;
+    }
+    for (var li = 0; li <= cap; li++) {
+      var n = levels[li], box = cover[n], step = terrain / n;
+      var x0 = Math.max(box[0], Math.floor(rect.minX / step));
+      var x1 = Math.min(box[2], Math.ceil(rect.maxX / step));
+      var y0 = Math.max(box[1], Math.floor((terrain - rect.maxY) / step));
+      var y1 = Math.min(box[3], Math.ceil((terrain - rect.minY) / step));
+      for (var ty = y0; ty < y1; ty++) {
+        for (var tx = x0; tx < x1; tx++) {
+          if (!hidden(tx, ty, n, li)) out.push({ across: n, x: tx, y: ty });
+        }
+      }
+    }
+    return out;
+  }
 
   var api = { copy: copy, finitePoint: finitePoint, parsePair: parsePair, gamePoint: gamePoint,
     solve: solve, scale: scale, toScreen: toScreen, toWorld: toWorld, withEndpoint: withEndpoint,
     ringStep: ringStep, readPoi: readPoi,
-    envelope: envelope, driveTime: driveTime, fitView: fitView, gridStep: gridStep };
+    envelope: envelope, driveTime: driveTime, fitView: fitView, gridStep: gridStep,
+    tilePlan: tilePlan };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.WardogCore = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
