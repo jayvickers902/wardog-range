@@ -340,6 +340,108 @@ check("an enormous file is capped rather than swallowed", () => {
   eq(r.dropped, 200, "dropped");
 });
 
+/* ---- weapon envelopes -------------------------------------------------- */
+
+check("L81 marks shortfall and overshoot with rounded metres", () => {
+  const l81 = { min: 52, max: 685, lowArcFrom: null };
+  eq(Core.envelope(50.6, l81), { level: "short", label: "TOO CLOSE · 1 M SHORT OF MINIMUM" });
+  eq(Core.envelope(686.4, l81), { level: "far", label: "OUT OF RANGE · 1 M BEYOND MAXIMUM" });
+});
+
+check("the envelope boundaries are inside the range", () => {
+  const l81 = { min: 52, max: 685, lowArcFrom: null };
+  const sph2 = { min: 745, max: 2660, lowArcFrom: 1070 };
+  eq(Core.envelope(l81.min, l81), { level: "ok", label: "IN RANGE" }, "L81 minimum");
+  eq(Core.envelope(l81.max, l81), { level: "ok", label: "IN RANGE" }, "L81 maximum");
+  eq(Core.envelope(sph2.lowArcFrom, sph2), { level: "ok", label: "IN RANGE" }, "SPH-2 high-arc boundary");
+  eq(Core.envelope(sph2.max, sph2), { level: "ok", label: "IN RANGE" }, "SPH-2 maximum");
+});
+
+check("SPH-2 reports high arc below its low-arc distance", () => {
+  eq(Core.envelope(900, { min: 745, max: 2660, lowArcFrom: 1070 }), {
+    level: "high", label: "IN RANGE · HIGH ARC ONLY"
+  });
+});
+
+check("a weapon without a maximum stays in range", () => {
+  eq(Core.envelope(10, { min: 100, max: null, lowArcFrom: null }), { level: "ok", label: "IN RANGE" });
+  eq(Core.envelope(100000, { min: 100, max: undefined, lowArcFrom: null }), { level: "ok", label: "IN RANGE" });
+});
+
+/* ---- drive time -------------------------------------------------------- */
+
+check("drive time pads seconds below ten", () => {
+  eq(Core.driveTime(100, 40), "0:09");
+});
+
+check("drive time formats a multi-minute journey", () => {
+  eq(Core.driveTime(4000, 40), "6:00");
+});
+
+check("non-positive road speeds use forty kilometres per hour", () => {
+  eq(Core.driveTime(1000, 0), "1:30", "zero speed fallback");
+  eq(Core.driveTime(1000, -20), "1:30", "negative speed fallback");
+});
+
+check("doubling road speed halves the travel time", () => {
+  eq(Core.driveTime(4000, 40), "6:00", "forty kilometres per hour");
+  eq(Core.driveTime(4000, 80), "3:00", "eighty kilometres per hour");
+});
+
+check("an unrepresentable drive time is an em dash", () => {
+  eq(Core.driveTime(Infinity, 40), "—");
+});
+
+/* ---- fitting a view ---------------------------------------------------- */
+
+check("a square box spans the same either way round the viewport", () => {
+  const box = { minX: 0, maxX: 100, minY: 0, maxY: 100 };
+  eq(Core.fitView(box, { w: 1600, h: 900 }, 1), { cx: 50, cy: 50, span: 100 }, "wide viewport");
+  eq(Core.fitView(box, { w: 900, h: 1600 }, 1), { cx: 50, cy: 50, span: 100 }, "tall viewport");
+  eq(Core.fitView(box, { w: 1600, h: 900 }, 2), { cx: 50, cy: 50, span: 200 }, "wide viewport with margin");
+});
+
+check("a box wider than tall is fitted by its width", () => {
+  eq(Core.fitView({ minX: 10, maxX: 210, minY: 20, maxY: 70 }, { w: 1600, h: 900 }, 1), {
+    cx: 110, cy: 45, span: 112.5
+  });
+});
+
+check("a non-unit view margin expands the fitted span", () => {
+  eq(Core.fitView({ minX: -20, maxX: 20, minY: 10, maxY: 30 }, { w: 1000, h: 500 }, 1.5), {
+    cx: 0, cy: 20, span: 30
+  });
+});
+
+check("a non-positive view margin falls back to one", () => {
+  const box = { minX: 0, maxX: 40, minY: 0, maxY: 20 };
+  eq(Core.fitView(box, { w: 800, h: 400 }, 0), Core.fitView(box, { w: 800, h: 400 }, 1), "zero margin");
+  eq(Core.fitView(box, { w: 800, h: 400 }, -2), Core.fitView(box, { w: 800, h: 400 }, 1), "negative margin");
+});
+
+/* ---- grid spacing ------------------------------------------------------ */
+
+check("grid spacing chooses the first major step that clears 46 pixels", () => {
+  eq(Core.gridStep(0.046), { major: 1000, minor: null }, "1000 metre major");
+  eq(Core.gridStep(0.023), { major: 2000, minor: null }, "2000 metre major");
+  eq(Core.gridStep(0.0115), { major: 4000, minor: null }, "4000 metre major");
+});
+
+check("grid spacing falls through to 4000 when zoomed out", () => {
+  eq(Core.gridStep(0.001), { major: 4000, minor: null });
+});
+
+check("minor grid lines appear on both sides of their threshold", () => {
+  eq(Core.gridStep(0.341).minor, 100, "minor above threshold");
+  eq(Core.gridStep(0.34).minor, 100, "minor at threshold");
+  isNull(Core.gridStep(0.33).minor, "minor below threshold");
+});
+
+check("grid thresholds are inclusive", () => {
+  eq(Core.gridStep(0.046).major, 1000, "exactly 46 pixels");
+  eq(Core.gridStep(0.34).minor, 100, "exactly 34 pixels");
+});
+
 /* ------------------------------------------------------------------------ */
 
 function pick(p) { return p ? { x: p.x, y: p.y } : null; }

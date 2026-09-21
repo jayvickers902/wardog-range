@@ -6,6 +6,7 @@ src/
 tests/
 tools/
 docs/
+design_handoff_wardog_range/
 .claude/
 README.md
 *.log

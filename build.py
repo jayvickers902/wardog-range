@@ -22,7 +22,7 @@ HEAD = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="Range, bearing and mils between map grid coordinates.">
+<meta name="description" content="Range and bearing between two points on a WARDOGS map.">
 """
 
 MARKER = '<div class="shell">'

@@ -187,9 +187,58 @@
     };
   }
 
+
+  /* ---- weapon envelope ----
+     Community numbers measured on level ground. The verdict comes back as a
+     level rather than a colour: the palette belongs to the page, and a level
+     can be asserted in a test without pinning a hex. */
+  function envelope(range, weapon) {
+    if (!weapon || !(weapon.max > 0)) return { level: "ok", label: "IN RANGE" };
+    if (range < weapon.min) {
+      return { level: "short", label: "TOO CLOSE · " + Math.round(weapon.min - range) + " M SHORT OF MINIMUM" };
+    }
+    if (range > weapon.max) {
+      return { level: "far", label: "OUT OF RANGE · " + Math.round(range - weapon.max) + " M BEYOND MAXIMUM" };
+    }
+    if (weapon.lowArcFrom && range < weapon.lowArcFrom) {
+      return { level: "high", label: "IN RANGE · HIGH ARC ONLY" };
+    }
+    return { level: "ok", label: "IN RANGE" };
+  }
+  // How long it takes to drive there, which is the other thing worth knowing
+  // about a range: m:ss at a fixed road speed.
+  function driveTime(metres, kmh) {
+    var speed = kmh > 0 ? kmh : 40;
+    var sec = Math.round(metres / (speed * 1000 / 3600));
+    if (!isFinite(sec) || sec < 0) return "—";
+    return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+  }
+  // The view that frames a world box. span is measured across the *shorter*
+  // viewport axis, so each side has to be converted into that axis's terms
+  // before the larger of the two decides -- comparing a width in metres
+  // against a height in metres frames the box correctly only when the
+  // viewport happens to be square.
+  function fitView(box, size, margin) {
+    var shorter = Math.min(size.w, size.h), m = margin > 0 ? margin : 1;
+    var span = Math.max((box.maxX - box.minX) * shorter / size.w,
+      (box.maxY - box.minY) * shorter / size.h) * m;
+    return { cx: (box.minX + box.maxX) / 2, cy: (box.minY + box.maxY) / 2, span: span };
+  }
+  // Grid spacing: the coarsest kilometre multiple still far enough apart to
+  // read, plus the 100 m minor lines once they have room of their own.
+  var MAJOR_STEPS = [1000, 2000, 4000];
+  function gridStep(k) {
+    var major = MAJOR_STEPS[MAJOR_STEPS.length - 1];
+    for (var i = 0; i < MAJOR_STEPS.length; i++) {
+      if (MAJOR_STEPS[i] * k >= 46) { major = MAJOR_STEPS[i]; break; }
+    }
+    return { major: major, minor: k * 100 >= 34 ? 100 : null };
+  }
+
   var api = { copy: copy, finitePoint: finitePoint, parsePair: parsePair, gamePoint: gamePoint,
     solve: solve, scale: scale, toScreen: toScreen, toWorld: toWorld, withEndpoint: withEndpoint,
-    ringStep: ringStep, readPoi: readPoi };
+    ringStep: ringStep, readPoi: readPoi,
+    envelope: envelope, driveTime: driveTime, fitView: fitView, gridStep: gridStep };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.WardogCore = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

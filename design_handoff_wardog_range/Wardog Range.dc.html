@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Noto+Sans:wght@400;600&family=Share+Tech+Mono&display=swap">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:#0c0e0d;color:#e4e0d4;font-family:'Noto Sans',sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+  a{color:#c9a84c}a:hover{color:#e8c96a}
+  input{font-family:'Share Tech Mono',monospace}
+  input:focus{outline:none}
+  ::selection{background:#c9a84c;color:#0c0e0d}
+  @keyframes wdIn{from{opacity:0}to{opacity:1}}
+</style>
+</helmet>
+
+<div style="height:100dvh;display:flex;flex-direction:column;background:#0c0e0d;color:#e4e0d4;overflow:hidden">
+
+  <sc-if value="{{ setupOpen }}" hint-placeholder-val="{{ true }}">
+    <div style="position:fixed;inset:0;z-index:60;background:#0c0e0d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;padding:32px 20px;overflow:auto;animation:wdIn .18s ease">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+        <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:30px;letter-spacing:.24em;color:#c9a84c;line-height:1">WARDOGS</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.2em;color:#6f7a6c">RANGE &amp; BEARING</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:760px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.16em;color:#c9a84c">01 &nbsp;MAP</span>
+          <span style="flex:1;height:1px;background:#262b25"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+          <sc-for list="{{ mapCards }}" as="m" hint-placeholder-count="3">
+            <button type="button" onClick="{{ m.pick }}" style="{{ m.style }}" style-hover="border-color:#c9a84c">
+              <span style="position:absolute;inset:0;background-size:cover;background-position:center;opacity:.85;filter:saturate(.4) brightness(.62) contrast(1.15);background-image:{{ m.bg }}"></span>
+              <span style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,14,13,.25),rgba(12,14,13,.92))"></span>
+              <span style="position:relative;display:flex;flex-direction:column;gap:2px;padding:12px 14px;text-align:left">
+                <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:20px;letter-spacing:.08em;color:#f4efe1;line-height:1.1">{{ m.name }}</span>
+                <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.12em;color:{{ m.noteColor }}">{{ m.note }}</span>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:760px;opacity:{{ step2Opacity }}">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.16em;color:#c9a84c">02 &nbsp;WHAT ARE YOU IN</span>
+          <span style="flex:1;height:1px;background:#262b25"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+          <sc-for list="{{ weaponCards }}" as="w" hint-placeholder-count="2">
+            <button type="button" onClick="{{ w.pick }}" style="{{ w.style }}" style-hover="border-color:#c9a84c">
+              <span style="display:flex;flex-direction:column;gap:3px;text-align:left">
+                <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:20px;letter-spacing:.08em;color:#f4efe1;line-height:1.1">{{ w.name }}</span>
+                <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.12em;color:#8d998b">{{ w.sub }}</span>
+              </span>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.06em;color:#c9a84c;white-space:nowrap">{{ w.band }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <header style="flex:0 0 auto;display:flex;align-items:center;gap:14px;padding:0 14px;height:46px;border-bottom:1px solid #262b25;background:#0c0e0d">
+    <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;letter-spacing:.2em;color:#c9a84c">WARDOGS</div>
+    <span style="width:1px;height:18px;background:#262b25"></span>
+    <button type="button" onClick="{{ openSetup }}" style="display:flex;align-items:center;gap:9px;background:transparent;border:1px solid #2c3129;border-radius:4px;padding:4px 10px;cursor:pointer;color:#e4e0d4" style-hover="border-color:#c9a84c">
+      <span style="font-family:'Rajdhani',sans-serif;font-weight:600;font-size:14px;letter-spacing:.08em;color:#f4efe1">{{ mapName }}</span>
+      <span style="width:1px;height:12px;background:#2c3129"></span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.1em;color:#c9a84c">{{ weaponShort }}</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#6f7a6c">CHANGE</span>
+    </button>
+    <div style="flex:1"></div>
+    <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.12em;color:#4d564b">{{ cursorLabel }}</span>
+  </header>
+
+  <div style="flex:1;min-height:0;display:flex">
+
+    <div ref="{{ setViewport }}" onPointerDown="{{ onDown }}" onPointerMove="{{ onHover }}" onDoubleClick="{{ fit }}" style="{{ mapStyle }}">
+      <div style="{{ imgStyle }}"></div>
+      <span style="position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(12,14,13,0) 45%,rgba(12,14,13,.55) 100%);pointer-events:none"></span>
+
+      <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible">
+        <sc-for list="{{ deadRects }}" as="d" hint-placeholder-count="0">
+          <rect x="{{ d.x }}" y="{{ d.y }}" width="{{ d.w }}" height="{{ d.h }}" fill="{{ d.fill }}" stroke="{{ d.stroke }}" stroke-width="1" stroke-dasharray="8 6"></rect>
+        </sc-for>
+        <sc-for list="{{ gridLines }}" as="g" hint-placeholder-count="0">
+          <line x1="{{ g.x1 }}" y1="{{ g.y1 }}" x2="{{ g.x2 }}" y2="{{ g.y2 }}" stroke="#c9a84c" stroke-opacity="{{ g.o }}" stroke-width="1"></line>
+        </sc-for>
+        <sc-for list="{{ rings }}" as="r" hint-placeholder-count="0">
+          <circle cx="{{ r.cx }}" cy="{{ r.cy }}" r="{{ r.r }}" fill="none" stroke="{{ r.stroke }}" stroke-opacity="{{ r.o }}" stroke-width="{{ r.w }}" stroke-dasharray="{{ r.dash }}"></circle>
+        </sc-for>
+        <sc-if value="{{ shotOn }}" hint-placeholder-val="{{ false }}">
+          <line x1="{{ shot.x1 }}" y1="{{ shot.y1 }}" x2="{{ shot.x2 }}" y2="{{ shot.y2 }}" stroke="{{ shot.color }}" stroke-width="1.5" stroke-opacity=".85"></line>
+        </sc-if>
+        <sc-for list="{{ edgeLabels }}" as="e" hint-placeholder-count="0">
+          <text x="{{ e.x }}" y="{{ e.y }}" text-anchor="{{ e.anchor }}" font-family="Share Tech Mono, monospace" font-size="10" fill="#6f7a6c">{{ e.t }}</text>
+        </sc-for>
+      </svg>
+
+      <sc-for list="{{ pins }}" as="p" hint-placeholder-count="0">
+        <div onPointerDown="{{ p.grab }}" title="{{ p.title }}" style="{{ p.style }}">
+          <span style="{{ p.dotStyle }}"></span>
+          <span style="position:absolute;left:18px;top:-9px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;letter-spacing:.1em;white-space:nowrap;text-shadow:0 1px 4px #000;color:{{ p.color }}">{{ p.label }}</span>
+        </div>
+      </sc-for>
+
+      <div style="position:absolute;left:10px;bottom:9px;display:flex;align-items:center;gap:10px;pointer-events:none;background:rgba(9,11,10,.8);border:1px solid #1a1f19;border-radius:3px;padding:3px 8px">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.12em;color:#4d564b">{{ scaleLabel }}</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.12em;color:#4d564b">{{ armHint }}</span>
+      </div>
+      <div style="position:absolute;right:12px;top:10px;display:flex;flex-direction:column;align-items:center;gap:1px;pointer-events:none">
+        <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;color:#c9a84c;line-height:1">N</span>
+        <span style="width:1px;height:16px;background:linear-gradient(180deg,#c9a84c,rgba(201,168,76,0))"></span>
+      </div>
+    </div>
+
+    <aside style="flex:0 0 306px;display:flex;flex-direction:column;border-left:1px solid #262b25;background:#0c0e0d;overflow-y:auto">
+
+      <div style="padding:16px 16px 18px;border-bottom:1px solid #262b25;background:#101310">
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:52px;line-height:.9;letter-spacing:.01em;font-variant-numeric:tabular-nums;color:{{ rangeColor }}">{{ rangeText }}</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:13px;color:#6f7a6c">m</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:10px">
+          <span style="display:flex;flex-direction:column;gap:1px">
+            <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.14em;color:#6f7a6c">BEARING</span>
+            <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:24px;line-height:1;font-variant-numeric:tabular-nums;color:#e4e0d4">{{ bearingText }}</span>
+          </span>
+          <span style="width:1px;align-self:stretch;background:#262b25"></span>
+          <span style="display:flex;flex-direction:column;gap:1px">
+            <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.14em;color:#6f7a6c">DRIVE</span>
+            <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:24px;line-height:1;font-variant-numeric:tabular-nums;color:#9aa697">{{ transitText }}</span>
+          </span>
+        </div>
+        <div style="{{ envStyle }}">{{ envLabel }}</div>
+      </div>
+
+      <div style="padding:14px 16px;border-bottom:1px solid #1a1f19">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+          <span style="width:9px;height:9px;border-radius:50%;background:#c9a84c"></span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.16em;color:#e4e0d4">{{ weaponShort }}</span>
+          <span style="flex:1"></span>
+          <button type="button" onClick="{{ armGun }}" style="{{ armGunStyle }}" style-hover="border-color:#c9a84c">SET ON MAP</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.14em;color:#6f7a6c">X</span>
+            <input type="text" inputmode="decimal" autocomplete="off" value="{{ gunXStr }}" onChange="{{ onGunX }}" onBlur="{{ blurGunX }}" onKeyDown="{{ nudgeGunX }}" style="background:#191c18;border:1px solid #3a4038;border-radius:4px;color:#e4e0d4;font-size:15px;padding:7px 9px;width:100%">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.14em;color:#6f7a6c">Y</span>
+            <input type="text" inputmode="decimal" autocomplete="off" value="{{ gunYStr }}" onChange="{{ onGunY }}" onBlur="{{ blurGunY }}" onKeyDown="{{ nudgeGunY }}" style="background:#191c18;border:1px solid #3a4038;border-radius:4px;color:#e4e0d4;font-size:15px;padding:7px 9px;width:100%">
+          </label>
+        </div>
+      </div>
+
+      <div style="padding:14px 16px;border-bottom:1px solid #1a1f19">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+          <span style="width:9px;height:9px;border-radius:50%;background:#e06b6b"></span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.16em;color:#e4e0d4">TARGET</span>
+          <span style="flex:1"></span>
+          <button type="button" onClick="{{ armTarget }}" style="{{ armTargetStyle }}" style-hover="border-color:#c9a84c">SET ON MAP</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.14em;color:#6f7a6c">X</span>
+            <input type="text" inputmode="decimal" autocomplete="off" value="{{ tgtXStr }}" onChange="{{ onTgtX }}" onBlur="{{ blurTgtX }}" onKeyDown="{{ nudgeTgtX }}" style="background:#191c18;border:1px solid #3a4038;border-radius:4px;color:#e4e0d4;font-size:15px;padding:7px 9px;width:100%">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.14em;color:#6f7a6c">Y</span>
+            <input type="text" inputmode="decimal" autocomplete="off" value="{{ tgtYStr }}" onChange="{{ onTgtY }}" onBlur="{{ blurTgtY }}" onKeyDown="{{ nudgeTgtY }}" style="background:#191c18;border:1px solid #3a4038;border-radius:4px;color:#e4e0d4;font-size:15px;padding:7px 9px;width:100%">
+          </label>
+        </div>
+        <input type="text" placeholder="or paste the Mark Coordinates line" autocomplete="off" onPaste="{{ onPaste }}" onKeyDown="{{ onPasteKey }}" style="{{ pasteStyle }}">
+      </div>
+
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.16em;color:#6f7a6c">SAVED</span>
+          <span style="flex:1;height:1px;background:#1a1f19"></span>
+          <button type="button" onClick="{{ saveTarget }}" style="{{ saveStyle }}" style-hover="border-color:#c9a84c">+ SAVE TARGET</button>
+        </div>
+        <sc-for list="{{ savedRows }}" as="s" hint-placeholder-count="0">
+          <div style="display:flex;align-items:center;gap:8px;background:#131614;border:1px solid #23271f;border-radius:4px;padding:6px 6px 6px 10px">
+            <button type="button" onClick="{{ s.load }}" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;background:transparent;border:0;padding:0;cursor:pointer;text-align:left" style-hover="opacity:.75">
+              <span style="font-family:'Rajdhani',sans-serif;font-weight:600;font-size:14px;letter-spacing:.04em;color:#e9e5d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.name }}</span>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.06em;color:#6f7a6c">{{ s.coords }}</span>
+            </button>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:{{ s.color }};white-space:nowrap">{{ s.range }}</span>
+            <button type="button" onClick="{{ s.kill }}" aria-label="Remove" style="width:22px;height:22px;flex:0 0 22px;display:grid;place-items:center;background:transparent;border:1px solid #23271f;border-radius:3px;color:#4d564b;font-size:13px;line-height:1;cursor:pointer" style-hover="border-color:#e06b6b;color:#e06b6b">×</button>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noSaved }}" hint-placeholder-val="{{ true }}">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.1em;color:#3a4038;padding:2px 0 4px">NOTHING SAVED ON THIS MAP</div>
+        </sc-if>
+        <button type="button" onClick="{{ clearAll }}" style="align-self:flex-start;margin-top:2px;background:transparent;border:1px solid #23271f;border-radius:4px;color:#4d564b;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.12em;padding:5px 10px;cursor:pointer" style-hover="border-color:#3a4038;color:#8d998b">NEW MEASUREMENT</button>
+      </div>
+
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;transitSpeed&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:40,&quot;min&quot;:5,&quot;max&quot;:120,&quot;unit&quot;:&quot; km/h&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Solution&quot;}}">
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem("wardog-simple-v1") || "null"); } catch (e) {}
+    this.T = 16384;
+    this.MAPS = {
+      bakurani: { name: "Bakurani", note: "PLACEMENT ~110 M", exact: false, play: null },
+      ozeti:    { name: "Ozeti", note: "ALIGNED · 20 M RMS", exact: true, play: { minX: 5758, maxX: 14307, minY: 2181, maxY: 9956 } },
+      zestafona:{ name: "Zestafona", note: "ALIGNED · 28 M RMS", exact: true, play: null }
+    };
+    this.WEAPONS = {
+      l81:  { name: "L81 Mortar", short: "MORTAR", sub: "Man-placed, high arc only", min: 52, max: 685, lowArcFrom: null },
+      sph2: { name: "SPH-2", short: "SPH-2", sub: "Artillery tank", min: 745, max: 2660, lowArcFrom: 1070 }
+    };
+    var s = saved || {};
+    this.state = {
+      setupOpen: !(s.map && s.weapon),
+      map: this.MAPS[s.map] ? s.map : null,
+      weapon: this.WEAPONS[s.weapon] ? s.weapon : null,
+      gun: s.gun || null,
+      target: s.target || null,
+      saved: s.saved && typeof s.saved === "object" ? s.saved : {},
+      arm: "gun",
+      view: { cx: 8192, cy: 8192, span: 16384 },
+      size: { w: 900, h: 700 },
+      cursor: null,
+      drag: null,
+      draft: {}
+    };
+  }
+
+  /* ---- persistence ---- */
+  persist() {
+    var s = this.state;
+    try {
+      localStorage.setItem("wardog-simple-v1", JSON.stringify({
+        map: s.map, weapon: s.weapon, gun: s.gun, target: s.target, saved: s.saved
+      }));
+    } catch (e) {}
+  }
+
+  /* ---- geometry (mirrors src/ruler-core.js) ---- */
+  k() { var s = this.state; return Math.min(s.size.w, s.size.h) / s.view.span; }
+  toScreen(p) {
+    var s = this.state, k = this.k();
+    return { x: s.size.w / 2 + (p.x - s.view.cx) * k, y: s.size.h / 2 - (p.y - s.view.cy) * k };
+  }
+  toWorld(p) {
+    var s = this.state, k = this.k();
+    return { x: s.view.cx + (p.x - s.size.w / 2) / k, y: s.view.cy - (p.y - s.size.h / 2) / k };
+  }
+  box() {
+    var d = this.MAPS[this.state.map];
+    var p = d && d.exact && d.play ? d.play : null;
+    return p || { minX: 0, maxX: this.T, minY: 0, maxY: this.T };
+  }
+  homeView(size) {
+    var b = this.box(), S = Math.min(size.w, size.h);
+    var span = Math.max((b.maxX - b.minX) * S / size.w, (b.maxY - b.minY) * S / size.h) * 1.06;
+    return { cx: (b.minX + b.maxX) / 2, cy: (b.minY + b.maxY) / 2, span: span };
+  }
+  maxSpan() {
+    var s = this.state, S = Math.min(s.size.w, s.size.h);
+    return Math.max(this.T * S / s.size.w, this.T * S / s.size.h) * 1.15;
+  }
+
+  /* ---- lifecycle ---- */
+  componentDidMount() {
+    this._move = (e) => this.onMove(e);
+    this._up = () => this.endDrag();
+    window.addEventListener("pointermove", this._move);
+    window.addEventListener("pointerup", this._up);
+    window.addEventListener("pointercancel", this._up);
+  }
+  componentWillUnmount() {
+    window.removeEventListener("pointermove", this._move);
+    window.removeEventListener("pointerup", this._up);
+    window.removeEventListener("pointercancel", this._up);
+    if (this._ro) this._ro.disconnect();
+  }
+
+  setViewport = (el) => {
+    if (!el || el === this._vp) return;
+    this._vp = el;
+    el.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
+    var measure = () => {
+      var r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      var fresh = !this._sized;
+      this._sized = true;
+      this.setState((st) => ({
+        size: { w: r.width, h: r.height },
+        view: fresh ? this.homeViewFor({ w: r.width, h: r.height }) : st.view
+      }));
+    };
+    this._ro = new ResizeObserver(measure);
+    this._ro.observe(el);
+    measure();
+  };
+  homeViewFor(size) {
+    var prev = this.state.size;
+    this.state.size = size;
+    var v = this.homeView(size);
+    this.state.size = prev;
+    return v;
+  }
+
+  /* ---- interaction ---- */
+  onWheel(e) {
+    e.preventDefault();
+    var r = this._vp.getBoundingClientRect();
+    var px = e.clientX - r.left, py = e.clientY - r.top;
+    var w = this.toWorld({ x: px, y: py });
+    var f = Math.exp(e.deltaY * 0.0014);
+    var span = Math.min(this.maxSpan(), Math.max(120, this.state.view.span * f));
+    var s = this.state, S = Math.min(s.size.w, s.size.h), k = S / span;
+    this.setState({ view: { span: span, cx: w.x - (px - s.size.w / 2) / k, cy: w.y + (py - s.size.h / 2) / k } });
+  }
+
+  onDown = (e) => {
+    if (e.button !== 0) return;
+    var r = this._vp.getBoundingClientRect();
+    this._start = { x: e.clientX, y: e.clientY, cx: this.state.view.cx, cy: this.state.view.cy, moved: false, r: r };
+    this.setState({ drag: { kind: "pan" } });
+  };
+
+  grab(which) {
+    return (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this._start = { x: e.clientX, y: e.clientY, moved: false, r: this._vp.getBoundingClientRect() };
+      this.setState({ drag: { kind: which } });
+    };
+  }
+
+  onMove(e) {
+    var d = this.state.drag;
+    if (!d || !this._start) return;
+    var dx = e.clientX - this._start.x, dy = e.clientY - this._start.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this._start.moved = true;
+    if (d.kind === "pan") {
+      if (!this._start.moved) return;
+      var k = this.k();
+      this.setState({ view: Object.assign({}, this.state.view, { cx: this._start.cx - dx / k, cy: this._start.cy + dy / k }) });
+    } else {
+      var w = this.toWorld({ x: e.clientX - this._start.r.left, y: e.clientY - this._start.r.top });
+      this.setPoint(d.kind, w, false);
+    }
+  }
+
+  endDrag() {
+    var d = this.state.drag;
+    if (!d) return;
+    if (d.kind === "pan" && this._start && !this._start.moved) {
+      var ev = this._lastHover;
+      if (ev) this.setPoint(this.state.arm, ev, true);
+    }
+    this.setState({ drag: null });
+    this.persist();
+  }
+
+  onHover = (e) => {
+    var r = this._vp.getBoundingClientRect();
+    var w = this.toWorld({ x: e.clientX - r.left, y: e.clientY - r.top });
+    this._lastHover = w;
+    if (!this.state.drag) this.setState({ cursor: w });
+  };
+
+  setPoint(which, w, advance) {
+    var p = { x: Math.min(this.T, Math.max(0, w.x)), y: Math.min(this.T, Math.max(0, w.y)) };
+    var d = Object.assign({}, this.state.draft || {});
+    delete d[which + "x"];
+    delete d[which + "y"];
+    var next = { draft: d };
+    next[which] = p;
+    if (advance && which === "gun") next.arm = "target";
+    this.setState(next, () => this.persist());
+  }
+
+  fit = () => { this.setState({ view: this.homeView(this.state.size) }); };
+
+  /* ---- coordinate fields ---- */
+  fmt(m) { return (m / 100).toFixed(2); }
+  // While a field has focus its raw text is held as a draft, so "103.83" can be
+  // typed a character at a time without being reformatted to 2dp mid-word. The
+  // point still updates live from whatever parses; the draft only owns display.
+  fieldStr(which, axis) {
+    var key = which + axis;
+    var d = this.state.draft || {};
+    if (d[key] !== undefined) return d[key];
+    return this.state[which] ? this.fmt(this.state[which][axis]) : "";
+  }
+  clearDraft(which, axis) {
+    var d = Object.assign({}, this.state.draft || {});
+    delete d[which + axis];
+    this.setState({ draft: d });
+  }
+  writeAxis(which, axis, val) {
+    var raw = String(val);
+    var d = Object.assign({}, this.state.draft || {});
+    d[which + axis] = raw;
+    var v = parseFloat(raw.replace(",", "."));
+    var next = { draft: d };
+    if (isFinite(v)) {
+      var cur = this.state[which] || { x: 0, y: 0 };
+      var p = { x: cur.x, y: cur.y };
+      p[axis] = Math.min(this.T, Math.max(0, v * 100));
+      next[which] = p;
+    }
+    this.setState(next, () => this.persist());
+  }
+  nudge(which, axis) {
+    return (e) => {
+      if (e.key === "Enter") { e.currentTarget.blur(); return; }
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      var cur = this.state[which];
+      if (!cur) return;
+      e.preventDefault();
+      this.clearDraft(which, axis);
+      var stepM = e.shiftKey ? 10 : 1;
+      var dir = e.key === "ArrowUp" ? 1 : -1;
+      var p = { x: cur.x, y: cur.y };
+      p[axis] = Math.min(this.T, Math.max(0, p[axis] + stepM * dir));
+      var next = {};
+      next[which] = p;
+      this.setState(next, () => this.persist());
+    };
+  }
+
+  /* ---- pasted coordinates (mirrors ruler-core parsePair) ---- */
+  parsePair(text) {
+    var s = String(text).normalize("NFKC").replace(/[\u2212\u2013]/g, "-").trim();
+    if (!s) return null;
+    var ms = Array.from(s.matchAll(/\b([xy])\s*[:=]?\s*([+-]?(?:\d+(?:[.,]\d+)?|\.\d+))/gi));
+    if (ms.length) {
+      if (ms.length !== 2 || ms[0][1].toLowerCase() === ms[1][1].toLowerCase()) return null;
+      var r = {};
+      for (var m of ms) r[m[1].toLowerCase()] = Number(m[2].replace(",", "."));
+      return isFinite(r.x) && isFinite(r.y) ? r : null;
+    }
+    var n = s.match(/^([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*[,;/|\s]\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))$/);
+    return n ? { x: Number(n[1]), y: Number(n[2]) } : null;
+  }
+  takeText(text, el) {
+    var p = this.parsePair(text);
+    if (!p) { if (el) el.style.borderColor = "#e06b6b"; return false; }
+    this.setPoint("target", { x: p.x * 100, y: p.y * 100 }, false);
+    if (el) { el.value = ""; el.style.borderColor = "#66b778"; setTimeout(() => { el.style.borderColor = "#23271f"; }, 700); }
+    return true;
+  }
+  onPaste = (e) => {
+    var dt = e.clipboardData;
+    if (!dt) return;
+    var t = dt.getData("text");
+    if (!this.parsePair(t)) return;
+    e.preventDefault();
+    this.takeText(t, e.currentTarget);
+  };
+  onPasteKey = (e) => { if (e.key === "Enter") { e.preventDefault(); this.takeText(e.currentTarget.value, e.currentTarget); } };
+
+  /* ---- solution ---- */
+  weapon() { return this.WEAPONS[this.state.weapon] || this.WEAPONS.l81; }
+  solve() {
+    var s = this.state;
+    if (!s.gun || !s.target) return null;
+    var dE = s.target.x - s.gun.x, dN = s.target.y - s.gun.y;
+    var brg = (Math.atan2(dE, dN) * 180 / Math.PI + 360) % 360;
+    return { range: Math.hypot(dE, dN), brg: brg };
+  }
+  envelope(r) {
+    var w = this.weapon();
+    if (r < w.min) return { label: "TOO CLOSE · " + Math.round(w.min - r) + " M SHORT OF MINIMUM", color: "#e06b6b" };
+    if (r > w.max) return { label: "OUT OF RANGE · " + Math.round(r - w.max) + " M BEYOND MAXIMUM", color: "#e06b6b" };
+    if (w.lowArcFrom && r < w.lowArcFrom) return { label: "IN RANGE · HIGH ARC ONLY", color: "#e0913f" };
+    return { label: "IN RANGE", color: "#66b778" };
+  }
+
+  /* ---- saved ---- */
+  savedList() { return (this.state.saved || {})[this.state.map] || []; }
+  saveTarget = () => {
+    var s = this.state;
+    if (!s.target) return;
+    var list = this.savedList().slice();
+    list.unshift({ id: Date.now(), name: "Target " + (list.length + 1), x: s.target.x, y: s.target.y });
+    var all = Object.assign({}, s.saved);
+    all[s.map] = list.slice(0, 8);
+    this.setState({ saved: all }, () => this.persist());
+  };
+  clearAll = () => { this.setState({ target: null, arm: "target" }, () => this.persist()); };
+
+  /* ---- setup ---- */
+  openSetup = () => { this.setState({ setupOpen: true }); };
+  pickMap(id) {
+    return () => {
+      this.setState({ map: id, gun: null, target: null, arm: "gun" }, () => {
+        this._sized = false;
+        if (this.state.size.w) this.setState({ view: this.homeView(this.state.size) });
+        this.persist();
+      });
+    };
+  }
+  pickWeapon(id) {
+    return () => this.setState((st) => ({ weapon: id, setupOpen: !st.map }), () => this.persist());
+  }
+
+  renderVals() {
+    var s = this.state, T = this.T, w = this.weapon(), sol = this.solve();
+    var mapId = s.map || "bakurani";
+    var def = this.MAPS[mapId];
+
+    /* setup cards */
+    var cardBase = "position:relative;overflow:hidden;height:118px;display:flex;align-items:flex-end;background:#131614;border-radius:6px;cursor:pointer;padding:0;transition:border-color .15s;border:1px solid ";
+    var mapCards = Object.keys(this.MAPS).map((id) => ({
+      id: id, name: this.MAPS[id].name, note: this.MAPS[id].note,
+      noteColor: this.MAPS[id].exact ? "#66b778" : "#e0913f",
+      bg: "url('maps/" + id + ".webp')",
+      style: cardBase + (s.map === id ? "#c9a84c" : "#262b25"),
+      pick: this.pickMap(id)
+    }));
+    var wBase = "display:flex;align-items:center;justify-content:space-between;gap:14px;background:#131614;border-radius:6px;cursor:pointer;padding:16px 16px;transition:border-color .15s;border:1px solid ";
+    var weaponCards = Object.keys(this.WEAPONS).map((id) => {
+      var x = this.WEAPONS[id];
+      return { id: id, name: x.name, sub: x.sub, band: x.min + "–" + x.max + " m",
+        style: wBase + (s.weapon === id ? "#c9a84c" : "#262b25"), pick: this.pickWeapon(id) };
+    });
+
+    /* map imagery */
+    var tl = this.toScreen({ x: 0, y: T }), br = this.toScreen({ x: T, y: 0 });
+    var imgStyle = "position:absolute;left:" + tl.x + "px;top:" + tl.y + "px;width:" + (br.x - tl.x) +
+      "px;height:" + (br.y - tl.y) + "px;background-image:url('maps/" + mapId + ".webp');background-size:100% 100%;background-repeat:no-repeat;" +
+      "filter:saturate(.3) brightness(.46) contrast(1.18);pointer-events:none;user-select:none";
+
+    /* ground nobody can stand on, shaded back (Ozeti's boundary is verified) */
+    var deadRects = [];
+    if (def && def.exact && def.play) {
+      var p0 = this.toScreen({ x: def.play.minX, y: def.play.maxY });
+      var p1 = this.toScreen({ x: def.play.maxX, y: def.play.minY });
+      var W = s.size.w, H = s.size.h;
+      deadRects = [
+        { x: 0, y: 0, w: W, h: Math.max(0, p0.y) },
+        { x: 0, y: p1.y, w: W, h: Math.max(0, H - p1.y) },
+        { x: 0, y: p0.y, w: Math.max(0, p0.x), h: Math.max(0, p1.y - p0.y) },
+        { x: p1.x, y: p0.y, w: Math.max(0, W - p1.x), h: Math.max(0, p1.y - p0.y) }
+      ].filter((r) => r.w > 0 && r.h > 0);
+      deadRects.push({ x: p0.x, y: p0.y, w: p1.x - p0.x, h: p1.y - p0.y, outline: true });
+    }
+
+    /* grid */
+    var k = this.k();
+    var step = k * 1000 >= 46 ? 1000 : k * 2000 >= 46 ? 2000 : 4000;
+    var fine = k * 100 >= 34 ? 100 : null;
+    var gridLines = [], edgeLabels = [];
+    var wtl = this.toWorld({ x: 0, y: 0 }), wbr = this.toWorld({ x: s.size.w, y: s.size.h });
+    var addV = (x, o) => { var p = this.toScreen({ x: x, y: 0 }); gridLines.push({ x1: p.x, y1: 0, x2: p.x, y2: s.size.h, o: o }); };
+    var addH = (y, o) => { var p = this.toScreen({ x: 0, y: y }); gridLines.push({ x1: 0, y1: p.y, x2: s.size.w, y2: p.y, o: o }); };
+    if (fine) {
+      for (var fx = Math.ceil(Math.max(0, wtl.x) / fine) * fine; fx <= Math.min(T, wbr.x); fx += fine) if (fx % step) addV(fx, 0.09);
+      for (var fy = Math.ceil(Math.max(0, wbr.y) / fine) * fine; fy <= Math.min(T, wtl.y); fy += fine) if (fy % step) addH(fy, 0.09);
+    }
+    for (var gx = Math.ceil(Math.max(0, wtl.x) / step) * step; gx <= Math.min(T, wbr.x); gx += step) {
+      addV(gx, 0.28);
+      var pv = this.toScreen({ x: gx, y: 0 });
+      edgeLabels.push({ x: pv.x + 4, y: 13, t: (gx / 100).toFixed(0), anchor: "start" });
+    }
+    for (var gy = Math.ceil(Math.max(0, wbr.y) / step) * step; gy <= Math.min(T, wtl.y); gy += step) {
+      addH(gy, 0.28);
+      var ph = this.toScreen({ x: 0, y: gy });
+      edgeLabels.push({ x: 5, y: ph.y - 4, t: (gy / 100).toFixed(0), anchor: "start" });
+    }
+
+    /* envelope rings around the gun */
+    var rings = [];
+    if (s.gun) {
+      var gp = this.toScreen(s.gun);
+      rings.push({ cx: gp.x, cy: gp.y, r: Math.max(1, w.min * k), stroke: "#c9a84c", o: 0.5, w: 1, dash: "5 5" });
+      rings.push({ cx: gp.x, cy: gp.y, r: Math.max(1, w.max * k), stroke: "#c9a84c", o: 0.65, w: 1.2, dash: "5 5" });
+      if (w.lowArcFrom) rings.push({ cx: gp.x, cy: gp.y, r: w.lowArcFrom * k, stroke: "#e0913f", o: 0.35, w: 1, dash: "2 6" });
+    }
+
+    var env = sol ? this.envelope(sol.range) : null;
+    var shot = null;
+    if (s.gun && s.target) {
+      var a = this.toScreen(s.gun), b = this.toScreen(s.target);
+      shot = { x1: a.x, y1: a.y, x2: b.x, y2: b.y, color: env ? env.color : "#c9a84c" };
+    }
+
+    /* pins */
+    var pinBase = "position:absolute;width:0;height:0;z-index:5;cursor:grab;touch-action:none";
+    var pins = [];
+    var mkPin = (which, label, color) => {
+      var p = s[which];
+      if (!p) return;
+      var sp = this.toScreen(p);
+      pins.push({
+        key: which, label: label, color: color, title: label,
+        style: pinBase + ";left:" + sp.x + "px;top:" + sp.y + "px",
+        dotStyle: "position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:" + color +
+          ";border:2px solid #0c0e0d;box-shadow:0 0 0 1px " + color + ",0 2px 8px rgba(0,0,0,.8)",
+        grab: this.grab(which)
+      });
+    };
+    mkPin("gun", w.short, "#c9a84c");
+    mkPin("target", "TARGET", "#e06b6b");
+
+    /* saved rows */
+    var savedRows = this.savedList().map((row) => {
+      var r = s.gun ? Math.hypot(row.x - s.gun.x, row.y - s.gun.y) : null;
+      return {
+        key: row.id, name: row.name,
+        coords: this.fmt(row.x) + " / " + this.fmt(row.y),
+        range: r === null ? "—" : Math.round(r) + " m",
+        color: r === null ? "#4d564b" : this.envelope(r).color,
+        load: () => this.setState({ target: { x: row.x, y: row.y } }, () => this.persist()),
+        kill: () => {
+          var all = Object.assign({}, s.saved);
+          all[s.map] = this.savedList().filter((z) => z.id !== row.id);
+          this.setState({ saved: all }, () => this.persist());
+        }
+      };
+    });
+
+    var armBtn = (on) => "background:" + (on ? "rgba(201,168,76,.14)" : "transparent") + ";border:1px solid " +
+      (on ? "#c9a84c" : "#23271f") + ";border-radius:3px;color:" + (on ? "#e8c96a" : "#6f7a6c") +
+      ";font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.12em;padding:4px 8px;cursor:pointer";
+
+    var mpp = 1 / k;
+
+    return {
+      setupOpen: s.setupOpen,
+      step2Opacity: s.map ? 1 : 0.42,
+      mapCards: mapCards,
+      weaponCards: weaponCards,
+      openSetup: this.openSetup,
+
+      mapName: def ? def.name : "—",
+      weaponShort: w.short,
+      cursorLabel: s.cursor ? "X " + this.fmt(s.cursor.x) + "  Y " + this.fmt(s.cursor.y) : def ? def.note : "",
+
+      mapStyle: "position:relative;flex:1;min-width:0;overflow:hidden;background:#090b0a;cursor:" +
+        (s.drag && s.drag.kind === "pan" ? "grabbing" : "crosshair") + ";touch-action:none;user-select:none",
+      imgStyle: imgStyle,
+      setViewport: this.setViewport,
+      onDown: this.onDown,
+      onHover: this.onHover,
+      fit: this.fit,
+
+      deadRects: deadRects.map((r) => ({
+        x: r.x, y: r.y, w: r.w, h: r.h,
+        fill: r.outline ? "none" : "rgba(9,11,10,.62)",
+        stroke: r.outline ? "rgba(201,168,76,.4)" : "none"
+      })),
+      gridLines: gridLines,
+      edgeLabels: edgeLabels,
+      rings: rings,
+      shotOn: !!shot,
+      shot: shot || { x1: 0, y1: 0, x2: 0, y2: 0, color: "#c9a84c" },
+      pins: pins,
+      scaleLabel: (mpp < 1 ? mpp.toFixed(2) : Math.round(mpp)) + " M/PX · DOUBLE-CLICK TO FIT",
+      armHint: !s.gun ? "CLICK TO PLACE YOUR " + w.short : !s.target ? "CLICK TO PLACE THE TARGET" : "DRAG A PIN TO ADJUST",
+
+      rangeText: sol ? Math.round(sol.range).toLocaleString("en-US") : "—",
+      rangeColor: env ? env.color : "#3a4038",
+      bearingText: sol ? sol.brg.toFixed(1) + "°" : "—",
+      transitText: sol ? this.transit(sol.range) : "—",
+      envLabel: env ? env.label : "PLACE BOTH POINTS",
+      envStyle: "margin-top:12px;display:block;padding:6px 10px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.12em;text-align:center;color:" +
+        (env ? env.color : "#4d564b") + ";background:" + (env ? env.color + "1a" : "transparent") +
+        ";border:1px solid " + (env ? env.color + "55" : "#23271f"),
+
+      gunXStr: this.fieldStr("gun", "x"),
+      gunYStr: this.fieldStr("gun", "y"),
+      tgtXStr: this.fieldStr("target", "x"),
+      tgtYStr: this.fieldStr("target", "y"),
+      blurGunX: () => this.clearDraft("gun", "x"),
+      blurGunY: () => this.clearDraft("gun", "y"),
+      blurTgtX: () => this.clearDraft("target", "x"),
+      blurTgtY: () => this.clearDraft("target", "y"),
+      onGunX: (e) => this.writeAxis("gun", "x", e.target.value),
+      onGunY: (e) => this.writeAxis("gun", "y", e.target.value),
+      onTgtX: (e) => this.writeAxis("target", "x", e.target.value),
+      onTgtY: (e) => this.writeAxis("target", "y", e.target.value),
+      nudgeGunX: this.nudge("gun", "x"),
+      nudgeGunY: this.nudge("gun", "y"),
+      nudgeTgtX: this.nudge("target", "x"),
+      nudgeTgtY: this.nudge("target", "y"),
+
+      armGun: () => this.setState({ arm: "gun" }),
+      armTarget: () => this.setState({ arm: "target" }),
+      armGunStyle: armBtn(s.arm === "gun"),
+      armTargetStyle: armBtn(s.arm === "target"),
+
+      onPaste: this.onPaste,
+      onPasteKey: this.onPasteKey,
+      pasteStyle: "margin-top:8px;width:100%;background:#101310;border:1px solid #23271f;border-radius:4px;color:#e4e0d4;font-size:12px;padding:7px 9px;transition:border-color .2s",
+
+      savedRows: savedRows,
+      noSaved: savedRows.length === 0,
+      saveTarget: this.saveTarget,
+      saveStyle: armBtn(false),
+      clearAll: this.clearAll
+    };
+  }
+
+  transit(m) {
+    var kmh = Number(this.props.transitSpeed) > 0 ? Number(this.props.transitSpeed) : 40;
+    var sec = Math.round(m / (kmh * 1000 / 3600));
+    return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+  }
+}
+</script>
+</body>
+</html>
