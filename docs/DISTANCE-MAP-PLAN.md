@@ -117,7 +117,9 @@ click moves B and leaves A alone.
 playable area, no detectable scale or rotation error, from nine independent
 tiles. Ozeti now carries `calibration: "verified"` with its residual and its
 playable bounds, the board draws that boundary, and the footer says the map is
-aligned. `tools/register-overview.py` makes the check repeatable. The same
+aligned. A checked boundary is also what the camera works to: the map opens
+framed on the playable area, will not pan or zoom past a margin around it, and
+shades the dead ground outside rather than fetching tiles for it. `tools/register-overview.py` makes the check repeatable. The same
 capture settled the grid convention: numeric axes, 1 km squares, y counting
 north upward, ticks on integer kilometre lines -- so the board's edge labels
 now use the game's own kilometre numbers instead of raw readout values.

@@ -751,7 +751,7 @@
           <div class="map-zoom" role="group" aria-label="Map navigation">
             <button type="button" class="ghost" id="zoomIn" aria-label="Zoom in">+</button>
             <button type="button" class="ghost" id="zoomOut" aria-label="Zoom out">−</button>
-            <button type="button" class="ghost" id="zoomFit" aria-label="Fit whole map">Fit map</button>
+            <button type="button" class="ghost" id="zoomFit" aria-label="Fit map">Fit map</button>
           </div>
           <div class="north" aria-label="North up">↑ <strong>N</strong></div>
           <div class="map-scale"><span id="scaleText">1,000 m</span><span id="scaleBar"></span><span id="gridSpacing">Grid 1,000 m</span><span id="ringNote"></span></div>
@@ -917,7 +917,7 @@
     <p>Bearings are grid north, clockwise, with mils on the 6400-per-circle scale — the same scale the gun sights use. The board's edge scale is in those same readout numbers. Markers are kept in this browser only.</p>
 
     <h3>The map</h3>
-    <p>The board is the whole terrain square in plan view. <strong>Measure</strong> pins two points and gives you the range between them; <strong>Marker</strong>, <strong>Observer</strong> and <strong>Gun</strong> drop that thing where you click. Anything already on the board can be dragged, drag empty ground to pan, scroll to zoom. Each map keeps its own positions, markers and image, so Ozeti's targets never turn up on Bakurani.</p>
+    <p>The board is the terrain square in plan view, or the playable part of it where that boundary has been checked in game -- Ozeti opens framed on its playable area, with the ground outside shaded back. <strong>Measure</strong> pins two points and gives you the range between them; <strong>Marker</strong>, <strong>Observer</strong> and <strong>Gun</strong> drop that thing where you click. Anything already on the board can be dragged, drag empty ground to pan, scroll to zoom. Each map keeps its own positions, markers and image, so Ozeti's targets never turn up on Bakurani.</p>
     <p>Each map ships a plan-view render of its terrain. It covers exactly the square the board draws, so it is pinned corner to corner and needs no lining up: <strong>Fade</strong> takes it back under the grid, <strong>Remove</strong> clears it, <strong>Shipped map</strong> puts it back where it belongs. The renders are downscaled hard to keep the page quick, so they are for recognising ground, not for reading it.</p>
     <p><strong>Landmarks.</strong> This page ships no marker list: towers, spawns and fuel points are game data nobody has published. Drop a <code>.json</code> list on the board, or pick one with <strong>Landmarks</strong> below, and it is drawn on that map and kept in this browser until you press Forget. Categories become show/hide chips above the map, and clicking a landmark snaps the endpoint to its recorded coordinates. Check one against the game first: a file with x and y the wrong way round loads without complaint and puts everything somewhere plausible and wrong.</p>
     <p>To use your own instead, drop or paste a screenshot of the in-game map, then use <strong>Adjust</strong> to drag and scale it until its grid sits on the board's grid. It is stored in this browser only, and alignment by eye is exactly as accurate as you make it: the numbers come from where you click, so a sloppily placed image gives sloppy ranges. The grid and the coordinate readout are the truth, the picture is a convenience.</p>
@@ -1648,13 +1648,84 @@
     if (!(r.width > 0) || !(r.height > 0)) return { x: size.w / 2, y: size.h / 2 };
     return { x: (e.clientX - r.left) * size.w / r.width, y: (e.clientY - r.top) * size.h / r.height };
   }
-  // Keeping the centre on the terrain means you can always find your way back.
+  /* ---- the ground worth showing ----
+     Where a map's playable boundary has been checked against the game, the
+     terrain outside it is somewhere nobody can stand -- on Ozeti, three
+     quarters of the square. There the board opens framed on the playable
+     area, keeps the centre of the view on it and stops zooming out a little
+     past it, so the dead ground is only ever a shaded margin. A map whose
+     boundary is not settled keeps the whole square: shading ground you can in
+     fact play on would be worse than showing ground you cannot. */
+  function playArea() {
+    var d = MAP_DEFS[state.map];
+    return d.playableExtent && d.calibration === "verified" ? d.playableExtent : null;
+  }
+  function homeBox() {
+    return playArea() || { minX: 0, maxX: TERRAIN, minY: 0, maxY: TERRAIN };
+  }
+  // Where the camera may go. The playable area, widened to hold anything
+  // somebody has actually put on the board: a spotter can call a grid outside
+  // the boundary, and a marker you cannot pan to is worse than dead ground
+  // you can.
+  function reachBox() {
+    var b = homeBox();
+    if (!playArea()) return b;
+    var box = { minX: b.minX, maxX: b.maxX, minY: b.minY, maxY: b.maxY };
+    var m = state.measure;
+    var pts = [state.selfSet && state.self, state.gunSet && state.gunSplit && state.gun,
+      m && m.a, m && m.b].concat(state.targets || []);
+    pts.forEach(function (p) {
+      if (!p || !Core.finitePoint(p)) return;
+      box.minX = Math.min(box.minX, Math.max(0, p.x));
+      box.maxX = Math.max(box.maxX, Math.min(TERRAIN, p.x));
+      box.minY = Math.min(box.minY, Math.max(0, p.y));
+      box.maxY = Math.max(box.maxY, Math.min(TERRAIN, p.y));
+    });
+    return box;
+  }
+  // The span that just fits a box. span measures the shorter side of the
+  // viewport, so each axis is converted into that unit before the larger wins.
+  function spanFor(b) {
+    var shortSide = Math.min(size.w, size.h);
+    return Math.max((b.maxX - b.minX) * shortSide / size.w, (b.maxY - b.minY) * shortSide / size.h);
+  }
+  // Far enough out to see the playable area with a margin of the dead ground
+  // around it -- and no further, unless something placed outside it has to fit.
+  function maxSpan() {
+    if (!playArea()) return TERRAIN * 1.15;
+    return Math.min(TERRAIN * 1.15,
+      Math.max(spanFor(playArea()) * 1.5, spanFor(reachBox()) * 1.15));
+  }
+  // A little air around a playable area, so its boundary is not the edge of
+  // the window. The whole square already has its edge numbers for that.
+  function homeView() {
+    var b = homeBox();
+    return { cx: (b.minX + b.maxX) / 2, cy: (b.minY + b.maxY) / 2,
+      span: spanFor(b) * (playArea() ? 1.08 : 1) };
+  }
+  // Whether the view is still the framing it was given, untouched. A window
+  // that changes shape reframes it; one that has been panned or zoomed is
+  // somewhere the player put it, and is left alone.
+  function isHome() {
+    var h = homeView();
+    return Math.abs(view.cx - h.cx) < 1 && Math.abs(view.cy - h.cy) < 1 &&
+      Math.abs(view.span - h.span) < 1;
+  }
+  function goHome() {
+    view = homeView();
+    clampView();
+    requestDraw();
+    saveViewSoon();
+  }
+  // Keeping the centre on that ground means you can always find your way back.
   function clampView() {
-    view.cx = Math.max(0, Math.min(TERRAIN, view.cx));
-    view.cy = Math.max(0, Math.min(TERRAIN, view.cy));
+    var b = reachBox();
+    view.cx = Math.max(b.minX, Math.min(b.maxX, view.cx));
+    view.cy = Math.max(b.minY, Math.min(b.maxY, view.cy));
+    view.span = Math.max(MIN_SPAN, Math.min(maxSpan(), view.span));
   }
   function setSpan(next, anchor) {
-    var s = Math.max(MIN_SPAN, Math.min(TERRAIN * 1.15, next));
+    var s = Math.max(MIN_SPAN, Math.min(maxSpan(), next));
     if (anchor) {
       var before = toWorld(anchor);
       view.span = s;
@@ -1678,10 +1749,14 @@
   }
   function applyCamera() {
     var c = state.camera;
-    if (c && Number.isFinite(c.cx) && Number.isFinite(c.cy) && Number.isFinite(c.span) && c.span > 0) {
-      view = { cx: c.cx, cy: c.cy, span: Math.max(MIN_SPAN, Math.min(TERRAIN * 1.15, c.span)) };
+    // A camera saved from further out than the map now allows -- Ozeti's whole
+    // square, from before it stopped offering one -- goes home rather than
+    // being squeezed down around wherever its centre happened to be.
+    if (c && Number.isFinite(c.cx) && Number.isFinite(c.cy) && Number.isFinite(c.span) &&
+        c.span > 0 && c.span <= maxSpan()) {
+      view = { cx: c.cx, cy: c.cy, span: c.span };
     } else {
-      view = { cx: TERRAIN / 2, cy: TERRAIN / 2, span: TERRAIN };
+      view = homeView();
     }
     clampView();
   }
@@ -1782,6 +1857,13 @@
     return false;
   }
 
+  // One closed subpath per rectangle, corner to corner; two of them under
+  // fill-rule evenodd make a frame.
+  function rectPath(a, b) {
+    return "M" + a.x.toFixed(1) + " " + a.y.toFixed(1) + "H" + b.x.toFixed(1) +
+      "V" + b.y.toFixed(1) + "H" + a.x.toFixed(1) + "Z";
+  }
+
   var gridStep = 1000;
   function drawGrid() {
     var s = [];
@@ -1812,6 +1894,18 @@
         var hy = toBoard({ x: 0, y: m }).y;
         if (hy >= -1 && hy <= size.h + 1) s.push(svgLine(left, hy, right, hy, "var(--line)", wide, op));
       }
+    }
+
+    // The playable boundary is not the edge of the terrain, and the difference
+    // matters: ground outside it is drawn, and is not somewhere you can stand,
+    // so it is shaded down to a margin. Over the grid, but under the edge
+    // numbers, which may have fallen back onto that ground from the window edge.
+    var play = playArea(), pa, pb;
+    if (play) {
+      pa = toBoard({ x: play.minX, y: play.maxY });
+      pb = toBoard({ x: play.maxX, y: play.minY });
+      s.push('<path fill="var(--ink)" fill-opacity="0.72" fill-rule="evenodd" d="' +
+        rectPath(tl, br) + rectPath(pa, pb) + '"/>');
     }
 
     // Edge scale in the numbers the game prints down its own map edges: the
@@ -1848,13 +1942,8 @@
 
     s.push('<rect ' + box + ' fill="none" stroke="var(--line-hot)" stroke-width="1.5"/>');
 
-    // The playable boundary is not the edge of the terrain, and the difference
-    // matters: ground outside it is drawn, and is not somewhere you can stand.
     // Only drawn where it has actually been checked against the game.
-    var play = MAP_DEFS[state.map].playableExtent;
-    if (play && MAP_DEFS[state.map].calibration === "verified") {
-      var pa = toBoard({ x: play.minX, y: play.maxY });
-      var pb = toBoard({ x: play.maxX, y: play.minY });
+    if (play) {
       s.push('<rect x="' + pa.x.toFixed(1) + '" y="' + pa.y.toFixed(1) +
         '" width="' + Math.max(0, pb.x - pa.x).toFixed(1) +
         '" height="' + Math.max(0, pb.y - pa.y).toFixed(1) +
@@ -2258,6 +2347,15 @@
     var br = toWorld({ x: size.w, y: size.h });
     var x0 = Math.max(0, Math.floor(tl.x / step)), x1 = Math.min(across - 1, Math.floor(br.x / step));
     var y0 = Math.max(0, Math.floor((TERRAIN - tl.y) / step)), y1 = Math.min(across - 1, Math.floor((TERRAIN - br.y) / step));
+    // Nothing is fetched for ground the shade buries anyway; the overview
+    // underneath is plenty for a margin.
+    var play = playArea();
+    if (play) {
+      x0 = Math.max(x0, Math.floor(play.minX / step));
+      x1 = Math.min(x1, Math.floor(play.maxX / step));
+      y0 = Math.max(y0, Math.floor((TERRAIN - play.maxY) / step));
+      y1 = Math.min(y1, Math.floor((TERRAIN - play.minY) / step));
+    }
     var k = zoomK(), span = step * k + 1, keep = {};
 
     for (var ty = y0; ty <= y1; ty++) {
@@ -2624,11 +2722,7 @@
   });
   $("zoomIn").addEventListener("click", function () { setSpan(view.span / 1.6); });
   $("zoomOut").addEventListener("click", function () { setSpan(view.span * 1.6); });
-  $("zoomFit").addEventListener("click", function () {
-    view.cx = TERRAIN / 2;
-    view.cy = TERRAIN / 2;
-    setSpan(TERRAIN);
-  });
+  $("zoomFit").addEventListener("click", goHome);
 
   /* ---- the ruler ----
      Four states: nothing placed, A placed and waiting for B, a finished pair,
@@ -3010,7 +3104,7 @@
     }
     if (k === "+" || k === "=") { setSpan(view.span / 1.6); e.preventDefault(); return; }
     if (k === "-" || k === "_") { setSpan(view.span * 1.6); e.preventDefault(); return; }
-    if (k === "0") { view.cx = TERRAIN / 2; view.cy = TERRAIN / 2; setSpan(TERRAIN); e.preventDefault(); return; }
+    if (k === "0") { goHome(); e.preventDefault(); return; }
     if (k === "Enter" || k === " ") {
       placeClick(toWorld({ x: size.w / 2, y: size.h / 2 }));
       e.preventDefault();
@@ -3076,7 +3170,16 @@
   // A rectangular viewport has to be re-measured whenever it changes shape,
   // or every click lands somewhere other than where it was aimed.
   function onResize() {
-    if (measureBoard()) requestDraw();
+    // Both the framing and how far out the board may zoom are worked out from
+    // its shape, so a change of shape can leave the view past the new limit --
+    // or, if the board had no measurable size when it was framed, fitted to a
+    // square it never was.
+    var home = isHome();
+    if (measureBoard()) {
+      if (home) view = homeView();
+      clampView();
+      requestDraw();
+    }
     paintScale();
   }
   if (typeof ResizeObserver === "function") new ResizeObserver(onResize).observe(boardWrap);

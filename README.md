@@ -118,7 +118,9 @@ The panel echoes each endpoint back in the game's own notation
 
 ### Reading the board
 
-The board is the whole terrain square in plan view, 16.384 km a side, north up.
+The board is the terrain square in plan view, 16.384 km a side, north up --
+or, where a map's playable boundary has been checked in game, the part of that
+square you can play on, with the rest shaded back.
 The compass, the scale bar and the cursor hint ride the corners of the map
 square itself rather than the corners of the window, and fall back to the
 window once the zoom pushes those corners off screen. Fitted whole the square
@@ -156,7 +158,7 @@ cursor. Two fingers is always a gesture and never a placement, and a cancelled
 gesture cannot leave a drag stuck. Clicks resolve to the nearest metre.
 
 Focus the board and it can be driven from the keyboard: arrow keys pan, `+` and
-`-` zoom, `0` fits the map, `Enter` places a point at the crosshair, `A` and
+`-` zoom, `0` frames the map -- its playable area, where that is known, `Enter` places a point at the crosshair, `A` and
 `B` arm an endpoint for the next click, `N` starts a new measurement, `U`
 undoes, `F` frames the pair. `Escape` abandons a half-finished measurement and
 puts the last finished one back. Shortcuts are scoped to the board, so they
@@ -186,6 +188,19 @@ separate question, and it is answered one map at a time.
 nine independent tiles, with no detectable scale or rotation error. The board
 draws its playable boundary -- which is not the edge of the terrain, and is
 smaller -- and the footer says the map is aligned.
+
+That boundary is also what the board frames. Ozeti's playable area is 8.5 by
+7.8 km inside a 16.4 km square, so three quarters of that square is ground
+nobody can stand on. The map opens framed on the playable area, **Fit map**
+and `0` return to it, panning keeps the centre of the view on it, and zooming
+out stops at half again its width. The dead ground is still drawn, shaded
+back, because a boundary with nothing outside it reads as the edge of the
+world; its tiles are never fetched. Anything placed outside the boundary --
+a spotter can call one -- widens the limit enough to reach it.
+
+Bakurani and Zestafona are framed whole, and shade nothing. Their bounds are
+published figures rather than measured ones, and shading ground you can in
+fact play on is a worse fault than showing ground you cannot.
 
 **Bakurani is partly checked.** A second overview identified it outright and
 confirmed its scale and orientation -- nine tiles, 12 m spread -- but that
