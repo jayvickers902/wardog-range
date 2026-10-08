@@ -35,10 +35,58 @@
     var p = parsePair(text);
     return p ? { x: p.x * metersPerUnit, y: p.y * metersPerUnit } : null;
   }
+  // Parse a game readout and reject coordinates outside the terrain square.
+  // Keeping this separate from gamePoint preserves the parser's useful
+  // ability to report signed values to callers that need to explain them.
+  function boundedGamePoint(text, metersPerUnit, maxUnits) {
+    var p = parsePair(text);
+    var max = Number(maxUnits);
+    if (!p || !(metersPerUnit > 0) || !(max >= 0) ||
+        p.x < 0 || p.y < 0 || p.x > max || p.y > max) return null;
+    return { x: p.x * metersPerUnit, y: p.y * metersPerUnit };
+  }
+  // One typed axis, in game units. The whole field has to be the number:
+  // parseFloat would take "12abc" as 12 and "9999" would be clamped to the
+  // edge, and both then look like a real point. A decimal comma is fine, as
+  // is a trailing point while it is still being typed. The error says which
+  // kind of wrong it is, so the page can explain it rather than just refuse.
+  function readAxis(text, maxUnits) {
+    var s = String(text == null ? "" : text).trim().replace(",", ".");
+    if (!s) return { value: null, error: "empty" };
+    if (!/^(?:\d+\.?\d*|\.\d+)$/.test(s)) return { value: null, error: "format" };
+    var v = Number(s);
+    if (!Number.isFinite(v) || v > Number(maxUnits)) return { value: null, error: "range" };
+    return { value: v, error: null };
+  }
   function solve(a, b) {
     var east = b.x - a.x, north = b.y - a.y;
     var bearing = (Math.atan2(east, north) * 180 / Math.PI + 360) % 360;
+    if (bearing > 359.999999) bearing = 0;
     return { range: Math.hypot(east, north), brg: bearing, mils: bearing * 6400 / 360 };
+  }
+  // The bearing as the board prints it, to a tenth of a degree. Two points
+  // that round to the same metre have no direction worth printing, and a
+  // bearing a hair west of north rounds to 0.0, never to 360.0.
+  function bearingText(sol) {
+    if (!sol || !(sol.range >= 0.5)) return "—";
+    var t = sol.brg.toFixed(1);
+    return t === "360.0" ? "0.0" : t;
+  }
+  // Where a dragged pin goes: the start point moved by exactly how far the
+  // pointer has travelled since the grab. Where on the pin it was grabbed --
+  // the dot or the far end of its label -- makes no difference.
+  function dragPoint(start, from, to) {
+    return { x: start.x + (to.x - from.x), y: start.y + (to.y - from.y) };
+  }
+  // The next default name for a saved target: one past the highest "Target
+  // N" still in the list, so deleting a row never produces a duplicate.
+  function nextSavedName(list) {
+    var top = 0;
+    (list || []).forEach(function (r) {
+      var m = /^Target (\d+)$/.exec(r && r.name);
+      if (m) top = Math.max(top, Number(m[1]));
+    });
+    return "Target " + (top + 1);
   }
   function scale(view, size) { return Math.min(size.w, size.h) / view.span; }
   function toScreen(p, view, size) {
@@ -278,6 +326,8 @@
   var api = { copy: copy, finitePoint: finitePoint, parsePair: parsePair, gamePoint: gamePoint,
     solve: solve, scale: scale, toScreen: toScreen, toWorld: toWorld, withEndpoint: withEndpoint,
     ringStep: ringStep, readPoi: readPoi,
+    boundedGamePoint: boundedGamePoint, readAxis: readAxis, bearingText: bearingText,
+    dragPoint: dragPoint, nextSavedName: nextSavedName,
     envelope: envelope, driveTime: driveTime, fitView: fitView, gridStep: gridStep,
     tilePlan: tilePlan };
   if (typeof module === "object" && module.exports) module.exports = api;

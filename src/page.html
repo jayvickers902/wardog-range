@@ -155,6 +155,31 @@
   cursor: crosshair;
 }
 
+.map-tools {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 12;
+  display: flex;
+  gap: 5px;
+}
+
+.map-tool {
+  min-width: 32px;
+  min-height: 30px;
+  padding: 4px 8px;
+  background: rgba(9,11,10,.86);
+  border: 1px solid var(--brdm);
+  border-radius: 4px;
+  color: var(--txd);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+}
+
+.map-tool:hover,
+.map-tool:focus-visible { border-color: var(--gold); color: var(--goldtx); }
+
 .map.is-panning {
   cursor: grabbing;
 }
@@ -225,6 +250,27 @@
   touch-action: none;
 }
 
+/* The dot is the exact point; this is only a bigger, invisible thing to grab. */
+.pin::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: -16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.pin.is-locked {
+  cursor: default;
+  pointer-events: none;
+}
+
+.pin.is-locked .pin-lbl::after {
+  content: " · LOCKED";
+  opacity: .7;
+}
+
 .pin-dot {
   position: absolute;
   left: -7px;
@@ -268,6 +314,15 @@
   color: var(--red);
 }
 
+/* The endpoint the next click will move. */
+.pin-gun.is-armed .pin-dot {
+  box-shadow: 0 0 0 1px var(--gold), 0 0 0 5px rgba(201,168,76,.3), 0 2px 8px rgba(0,0,0,.8);
+}
+
+.pin-tgt.is-armed .pin-dot {
+  box-shadow: 0 0 0 1px var(--red), 0 0 0 5px rgba(224,107,107,.3), 0 2px 8px rgba(0,0,0,.8);
+}
+
 .status {
   position: absolute;
   left: 10px;
@@ -286,6 +341,49 @@
   letter-spacing: .12em;
   font-variant-numeric: tabular-nums;
 }
+
+.status-arm { color: var(--goldtx); }
+
+.load-chip {
+  position: absolute;
+  left: 10px;
+  top: 48px;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(9,11,10,.86);
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  padding: 3px 4px 3px 8px;
+  color: var(--txd);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+  font-variant-numeric: tabular-nums;
+}
+
+.load-chip[hidden] {
+  display: none;
+}
+
+.load-chip.is-bad {
+  color: var(--org);
+}
+
+.load-chip-btn {
+  background: transparent;
+  border: 1px solid var(--brds);
+  border-radius: 3px;
+  color: var(--gold);
+  padding: 2px 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+}
+
+.load-chip-btn:hover,
+.load-chip-btn:focus-visible { border-color: var(--gold); }
 
 .north {
   position: absolute;
@@ -327,38 +425,44 @@
   background: var(--pill);
 }
 
-.sol-range {
+.sol-pair {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.sol-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.sol-read {
   display: flex;
   align-items: baseline;
 }
 
+/* Range and bearing are the two numbers a shot needs, so they get the same
+   size. Range takes the verdict colour; bearing stays plain. */
 .sol-num {
   font-family: var(--disp);
-  font-size: 52px;
+  font-size: 44px;
   font-weight: 700;
   line-height: .9;
   letter-spacing: .01em;
   font-variant-numeric: tabular-nums;
 }
 
+.sol-brg {
+  color: var(--txt);
+}
+
 .sol-unit {
-  margin-left: 7px;
+  margin-left: 5px;
   color: var(--txf);
   font-family: var(--mono);
   font-size: 13px;
-}
-
-.sol-stats {
-  display: flex;
-  align-items: stretch;
-  gap: 14px;
-  margin-top: 10px;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
 }
 
 .stat-cap {
@@ -368,22 +472,6 @@
   letter-spacing: .14em;
 }
 
-.stat-val {
-  font-family: var(--disp);
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.stat-brg {
-  color: var(--tx);
-}
-
-.stat-drive {
-  color: var(--txm);
-}
-
 .stat-rule {
   width: 1px;
   background: var(--brd);
@@ -391,22 +479,58 @@
 
 .verdict {
   display: block;
-  margin-top: 12px;
+  margin-top: 14px;
   padding: 6px 10px;
   border-radius: 3px;
   font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: .12em;
+  font-size: 11px;
+  letter-spacing: .1em;
   text-align: center;
 }
 
-.sol-note {
-  margin: 9px 0 0;
-  color: var(--txl);
+.sol-qual {
+  margin: 6px 0 0;
+  color: var(--txm);
   font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: .1em;
+  font-size: 10px;
+  letter-spacing: .08em;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.sol-place {
+  margin: 12px 0 0;
+  white-space: pre-line;
+  color: var(--txd);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
   line-height: 1.5;
+}
+
+.sol-drive {
+  margin: 6px 0 0;
+  color: var(--txf);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+
+.sol-drive span {
+  color: var(--txm);
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .ep {
@@ -483,6 +607,28 @@
   border-color: var(--gold);
 }
 
+.fld-in.is-bad { border-color: var(--red); }
+
+.coord-msg {
+  min-height: 16px;
+  margin: 7px 0 0;
+  color: var(--txm);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.coord-msg.is-bad { color: var(--red); }
+.coord-msg.is-ok { color: var(--grn); }
+
+.ep-help {
+  margin: 10px 0 0;
+  color: var(--txf);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+
 .paste {
   width: 100%;
   margin-top: 8px;
@@ -533,6 +679,19 @@
   background: rgba(201,168,76,.14);
   border-color: var(--gold);
   color: var(--goldtx);
+}
+
+.chip:disabled {
+  opacity: .4;
+  cursor: default;
+  border-color: var(--brdo);
+}
+
+.map-tool:disabled {
+  opacity: .4;
+  cursor: default;
+  border-color: var(--brdm);
+  color: var(--txd);
 }
 
 .saved {
@@ -648,13 +807,51 @@
   color: var(--red);
 }
 
+.srow-ren {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: 1px solid var(--brdo);
+  border-radius: 3px;
+  color: var(--txl);
+  padding: 0;
+  font-size: 12px;
+}
+
+.srow-ren:hover {
+  border-color: var(--gold);
+  color: var(--goldtx);
+}
+
+.srow-name-in {
+  width: 100%;
+  min-width: 0;
+  background: var(--sur2);
+  border: 1px solid var(--gold);
+  border-radius: 3px;
+  color: var(--txb);
+  padding: 3px 6px;
+  font-family: var(--disp);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  outline: none;
+}
+
+.newm-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .newm {
-  align-self: flex-start;
   margin-top: 2px;
   background: transparent;
   border: 1px solid var(--brdo);
   border-radius: 4px;
-  color: var(--txl);
+  color: var(--txf);
   padding: 5px 10px;
   font-family: var(--mono);
   font-size: 10px;
@@ -744,6 +941,23 @@
   background: var(--bg);
   animation: wdIn .18s ease;
 }
+
+.setup-close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  background: transparent;
+  border: 1px solid var(--brdm);
+  border-radius: 4px;
+  color: var(--txd);
+  padding: 7px 11px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+}
+
+.setup-close:hover,
+.setup-close:focus-visible { border-color: var(--gold); color: var(--goldtx); }
 
 .setup[hidden] {
   display: none;
@@ -948,7 +1162,7 @@
 
 <div class="shell">
 
-  <header class="hdr">
+  <header class="hdr" id="hdr">
     <span class="hdr-mark">WARDOGS</span>
     <span class="hdr-div"></span>
     <button class="ctx" id="ctxBtn" type="button">
@@ -979,34 +1193,44 @@
       </div>
       <div class="status">
         <span id="scaleOut"></span>
+        <span>NEXT CLICK SETS <span class="status-arm" id="hintArm">MORTAR</span></span>
         <span id="hintOut"></span>
       </div>
       <div class="north">
         <span class="north-n">N</span>
         <span class="north-bar"></span>
       </div>
+      <div class="map-tools" role="toolbar" aria-label="Map controls">
+        <button class="map-tool" id="zoomOut" type="button" aria-label="Zoom out" title="Zoom out (-)">−</button>
+        <button class="map-tool" id="zoomIn" type="button" aria-label="Zoom in" title="Zoom in (+)">+</button>
+        <button class="map-tool" id="fitBtn" type="button" title="Frame both points (F)">FIT SHOT</button>
+        <button class="map-tool" id="undoBtn" type="button" title="Undo the last change (Ctrl+Z)">UNDO</button>
+      </div>
+      <div class="load-chip" id="loadChip" hidden>
+        <span id="loadChipTxt"></span>
+        <button class="load-chip-btn" id="chipRetry" type="button" hidden>RETRY</button>
+      </div>
     </div>
 
     <aside class="rail">
 
       <section class="sol">
-        <div class="sol-range">
-          <span class="sol-num" id="rangeOut">—</span>
-          <span class="sol-unit">m</span>
-        </div>
-        <div class="sol-stats">
-          <div class="stat">
-            <span class="stat-cap">BEARING</span>
-            <span class="stat-val stat-brg" id="brgOut">—</span>
+        <div class="sol-pair">
+          <div class="sol-cell">
+            <span class="stat-cap">RANGE</span>
+            <span class="sol-read"><span class="sol-num" id="rangeOut">—</span><span class="sol-unit">m</span></span>
           </div>
           <span class="stat-rule"></span>
-          <div class="stat">
-            <span class="stat-cap">DRIVE</span>
-            <span class="stat-val stat-drive" id="driveOut">—</span>
+          <div class="sol-cell">
+            <span class="stat-cap">BEARING</span>
+            <span class="sol-read"><span class="sol-num sol-brg" id="brgOut">—</span><span class="sol-unit">°</span></span>
           </div>
         </div>
         <div class="verdict" id="verdictOut">PLACE BOTH POINTS</div>
-        <p class="sol-note">LEVEL GROUND · HEIGHT MOVES THESE NUMBERS</p>
+        <p class="sol-qual">LEVEL-GROUND CHECK · A HEIGHT DIFFERENCE CAN CHANGE IT</p>
+        <p class="sol-place" id="placeOut"></p>
+        <p class="sol-drive">DRIVE <span id="driveOut">—</span> · STRAIGHT LINE AT 40 KM/H</p>
+        <p class="sr-only" id="announce" aria-live="polite"></p>
       </section>
 
       <section class="ep">
@@ -1014,18 +1238,22 @@
           <span class="ep-dot ep-dot-gun"></span>
           <span class="ep-lbl" id="gunLbl">MORTAR</span>
           <span class="ep-sp"></span>
-          <button class="chip" id="armGun" type="button">SET ON MAP</button>
+          <button class="chip" id="lockGun" type="button" aria-pressed="false" aria-label="Lock the gun" title="Keep the gun where it is while you work on targets">LOCK</button>
+          <button class="chip" id="armGun" type="button" aria-pressed="false" aria-label="Next map click sets the gun">SET ON MAP</button>
         </div>
         <div class="ep-fields">
           <label class="fld">
             <span class="fld-lbl">X</span>
-            <input class="fld-in" id="gunX" inputmode="decimal" autocomplete="off" spellcheck="false">
+            <input class="fld-in" id="gunX" aria-label="Gun X" aria-describedby="gunCoordMsg" inputmode="decimal" autocomplete="off" spellcheck="false">
           </label>
           <label class="fld">
             <span class="fld-lbl">Y</span>
-            <input class="fld-in" id="gunY" inputmode="decimal" autocomplete="off" spellcheck="false">
+            <input class="fld-in" id="gunY" aria-label="Gun Y" aria-describedby="gunCoordMsg" inputmode="decimal" autocomplete="off" spellcheck="false">
           </label>
         </div>
+        <p class="coord-msg" id="gunCoordMsg"></p>
+        <input class="paste" id="gunPaste" aria-label="Paste the gun's Mark Coordinates line" aria-describedby="gunCoordMsg"
+               autocomplete="off" spellcheck="false" placeholder="paste a Mark Coordinates line">
       </section>
 
       <section class="ep">
@@ -1033,20 +1261,22 @@
           <span class="ep-dot ep-dot-tgt"></span>
           <span class="ep-lbl">TARGET</span>
           <span class="ep-sp"></span>
-          <button class="chip" id="armTgt" type="button">SET ON MAP</button>
+          <button class="chip" id="armTgt" type="button" aria-pressed="false" aria-label="Next map click sets the target">SET ON MAP</button>
         </div>
         <div class="ep-fields">
           <label class="fld">
             <span class="fld-lbl">X</span>
-            <input class="fld-in" id="tgtX" inputmode="decimal" autocomplete="off" spellcheck="false">
+            <input class="fld-in" id="tgtX" aria-label="Target X" aria-describedby="targetCoordMsg" inputmode="decimal" autocomplete="off" spellcheck="false">
           </label>
           <label class="fld">
             <span class="fld-lbl">Y</span>
-            <input class="fld-in" id="tgtY" inputmode="decimal" autocomplete="off" spellcheck="false">
+            <input class="fld-in" id="tgtY" aria-label="Target Y" aria-describedby="targetCoordMsg" inputmode="decimal" autocomplete="off" spellcheck="false">
           </label>
         </div>
-        <input class="paste" id="pasteIn" autocomplete="off" spellcheck="false"
-               placeholder="or paste the Mark Coordinates line">
+        <p class="coord-msg" id="targetCoordMsg"></p>
+        <input class="paste" id="pasteIn" aria-label="Paste the target's Mark Coordinates line" aria-describedby="targetCoordMsg"
+               autocomplete="off" spellcheck="false" placeholder="paste a Mark Coordinates line">
+        <p class="ep-help">IN A FIELD: ↑ ↓ 1 M · SHIFT 10 M · ESC PUTS IT BACK</p>
       </section>
 
       <section class="saved">
@@ -1056,13 +1286,17 @@
           <button class="chip" id="saveBtn" type="button">+ SAVE TARGET</button>
         </div>
         <div class="saved-list" id="savedList"></div>
-        <button class="newm" id="newBtn" type="button">NEW MEASUREMENT</button>
+        <div class="newm-row">
+          <button class="newm" id="newBtn" type="button">NEW TARGET</button>
+          <button class="newm" id="clearBtn" type="button">CLEAR BOTH POINTS</button>
+        </div>
       </section>
 
     </aside>
   </div>
 
-  <div class="setup" id="setup">
+  <div class="setup" id="setup" role="dialog" aria-modal="true" aria-label="Choose a map and what you are in" tabindex="-1" hidden>
+    <button class="setup-close" id="setupCancel" type="button">CANCEL</button>
     <div class="wordmark">
       <span class="wm-name">WARDOGS</span>
       <span class="wm-sub">RANGE &amp; BEARING</span>
@@ -1089,8 +1323,8 @@
       </div>
       <div class="load-bar"><span class="load-fill" id="loadFill"></span></div>
       <div class="load-foot">
-        <span class="load-note">ONCE PER MAP · KEPT FOR NEXT TIME</span>
-        <button class="load-skip" id="loadSkip" type="button" hidden>START ANYWAY</button>
+        <span class="load-note" id="loadNote">ONCE PER MAP · KEPT FOR NEXT TIME · THE BOARD WORKS WHILE IT LOADS</span>
+        <button class="load-skip" id="loadRetry" type="button" hidden>RETRY</button>
       </div>
     </div>
   </div>
@@ -1126,7 +1360,8 @@
      moment the choice is being made. */
   var MAPS = {
     bakurani: {
-      name: "Bakurani", note: "PLACEMENT ~110 M", exact: false, play: null,
+      name: "Bakurani", note: "ALIGNED · 23 M RMS", exact: true,
+      play: { minX: 2335, maxX: 13360, minY: 1934, maxY: 12965 },
       style: { slope: 0.8094, intercept: -0.1906 }
     },
     ozeti: {
@@ -1145,13 +1380,13 @@
      player finds themselves by on the in-game map. World metres, drawn in
      world space like the pins, so the render under them does not move them.
      Base corners are the Apollyon calculator's (MIT, commit 6a9fcd9); our own
-     captures put every one of the six on Ozeti and Zestafona within 76 m of
-     it, on the same side of the map. Apollyon has no zones, so those were
-     fitted to the circle in those captures. None shows Bakurani's zone yet.
+     captures put all nine within 90 m of it, on the same side of the map.
+     Apollyon has no zones, so those were fitted to the circle in those
+     captures.
      The record is in docs/MAP-REFERENCE-REVIEW.md. */
   var GROUND = {
     bakurani: {
-      zone: null,
+      zone: { x: 8097, y: 6988, r: 495 },
       bases: [
         { side: "manticore", pts: [[3868, 7988], [4339, 7885], [4235, 7415], [3765, 7518]] },
         { side: "valkyra", pts: [[11750, 7376], [12122, 7071], [11818, 6699], [11445, 7004]] },
@@ -1211,20 +1446,32 @@
   };
 
   /* ---- state ---- */
+  var MAX_UNITS = TERRAIN / UNIT;           // 163.84, the far edge in game units
+  var RANGE_TXT = "0.00 to " + MAX_UNITS.toFixed(2);
+  // How an endpoint got where it is. Clicked and dragged points carry the
+  // map image's own placement error; typed and pasted ones do not.
+  var SOURCES = { clicked: 1, dragged: 1, typed: 1, pasted: 1, saved: 1 };
   var state = {
     setupOpen: true,
-    holding: false,           // setup stays up only because the map is still downloading
     map: null,
     weapon: null,
     gun: null,
     target: null,
+    source: { gun: null, target: null },
     saved: {},
     arm: "gun",
+    gunLocked: false,
     view: { cx: TERRAIN / 2, cy: TERRAIN / 2, span: TERRAIN },
     size: { w: 900, h: 700 },
     cursor: null,
-    drag: null,
-    draft: {}
+    drag: null,                 // a pan, or a pin being moved: only a preview until it lands
+    draft: {},                  // text in a coordinate field that is not a point yet
+    fieldError: { gun: "", target: "" },
+    edit: null,                 // the coordinate field being typed into: one undo step
+    undo: [],
+    renaming: null,             // id of the saved row whose name is being typed
+    setupSnapshot: null,        // what CANCEL goes back to
+    setupFocus: null
   };
 
   function clampPoint(p) {
@@ -1233,6 +1480,7 @@
       y: Math.min(TERRAIN, Math.max(0, p.y))
     };
   }
+  function samePoint(a, b) { return !!a === !!b && (!a || (a.x === b.x && a.y === b.y)); }
   function readSaved(raw) {
     var out = {};
     MAP_ORDER.forEach(function (id) {
@@ -1241,7 +1489,7 @@
         return r && Core.finitePoint(r);
       }).slice(0, SAVED_CAP).map(function (r, i) {
         return { id: r.id || (Date.now() + i), name: String(r.name || "Target").slice(0, 40),
-                 x: r.x, y: r.y };
+                 x: r.x, y: r.y, src: SOURCES[r.src] ? r.src : null };
       });
     });
     return out;
@@ -1254,14 +1502,21 @@
     if (WEAPONS[raw.weapon]) state.weapon = raw.weapon;
     if (Core.finitePoint(raw.gun)) state.gun = clampPoint(raw.gun);
     if (Core.finitePoint(raw.target)) state.target = clampPoint(raw.target);
+    var src = raw.source && typeof raw.source === "object" ? raw.source : {};
+    ["gun", "target"].forEach(function (which) {
+      state.source[which] = state[which] && SOURCES[src[which]] ? src[which] : null;
+    });
+    state.gunLocked = !!(raw.gunLocked && state.gun);
+    // With a gun already down, the next click is for a target.
+    state.arm = state.gun ? "target" : "gun";
     state.saved = readSaved(raw.saved && typeof raw.saved === "object" ? raw.saved : {});
     state.setupOpen = !(state.map && state.weapon);
   }
   function persist() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        map: state.map, weapon: state.weapon, gun: state.gun,
-        target: state.target, saved: state.saved
+        map: state.map, weapon: state.weapon, gun: state.gun, target: state.target,
+        source: state.source, gunLocked: state.gunLocked, saved: state.saved
       }));
     } catch (e) {}
   }
@@ -1273,6 +1528,11 @@
   function k() { return Core.scale(state.view, state.size); }
   function toScreen(p) { return Core.toScreen(p, state.view, state.size); }
   function toWorld(p) { return Core.toWorld(p, state.view, state.size); }
+  // An endpoint as drawn: a pin being dragged is shown where it would land.
+  function point(which) {
+    return state.drag && state.drag.kind === which && state.drag.preview
+      ? state.drag.preview : state[which];
+  }
 
   // The playable boundary is a different and smaller thing than the terrain
   // square, and only counts where it has been checked against the game.
@@ -1286,10 +1546,184 @@
       state.size, OUT_MARGIN).span;
   }
   function solve() {
-    if (!state.gun || !state.target) return null;
-    return Core.solve(state.gun, state.target);
+    var gun = point("gun"), target = point("target");
+    if (!gun || !target) return null;
+    return Core.solve(gun, target);
   }
   function savedList() { return state.saved[state.map] || []; }
+  function findSaved(id) {
+    return savedList().filter(function (r) { return String(r.id) === String(id); })[0] || null;
+  }
+
+  /* ---- one step back ----
+     Every change to the points or the saved list goes through change(),
+     which keeps what was there before so UNDO can put it back whole. A drag
+     is one step however far it goes, and typing into a coordinate field is
+     one step however many keys it takes. The camera is not part of it:
+     framing or zooming never changes a coordinate. */
+  var UNDO_CAP = 30;
+  function snapshot() {
+    return { gun: Core.copy(state.gun), target: Core.copy(state.target), arm: state.arm,
+             source: Core.copy(state.source), saved: Core.copy(state.saved) };
+  }
+  function sameShot(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function restoreShot(snap) {
+    state.gun = snap.gun; state.target = snap.target; state.arm = snap.arm;
+    state.source = snap.source; state.saved = snap.saved;
+    if (!state.gun) state.gunLocked = false;
+    if (state.gunLocked) state.arm = "target";
+    state.draft = {};
+    state.fieldError = { gun: "", target: "" };
+    state.renaming = null;
+  }
+  function pushUndo(before) {
+    state.undo.push(before);
+    if (state.undo.length > UNDO_CAP) state.undo.shift();
+  }
+  function change(fn) {
+    endEdit();
+    var before = snapshot();
+    fn();
+    requestRender();
+    if (sameShot(before, snapshot())) return false;
+    pushUndo(before);
+    persist();
+    announce(shotText());
+    return true;
+  }
+  function canUndo() {
+    return state.undo.length > 0 || !!(state.edit && !sameShot(state.edit.before, snapshot()));
+  }
+  function undo() {
+    endEdit();
+    var before = state.undo.pop();
+    if (!before) return;
+    restoreShot(before);
+    persist();
+    requestRender();
+    announce("Undone. " + shotText());
+  }
+
+  /* ---- typing a coordinate ----
+     A field holds a draft while it is typed into. Binding the value straight
+     to a 2dp format makes the field untypable: "1" reformats to "1.00" and
+     the caret lands after it, so 103.83 can never be reached. The point
+     follows the draft only while both axes read as whole, in-range numbers;
+     anything less leaves the last good point exactly where it was. */
+  function beginEdit(which) {
+    if (state.edit && state.edit.which === which) return;
+    endEdit();
+    state.edit = { which: which, before: snapshot() };
+  }
+  function endEdit() {
+    var ed = state.edit;
+    if (!ed) return;
+    state.edit = null;
+    settleDrafts(ed.which);
+    if (ed.which === "gun" && !samePoint(ed.before.gun, state.gun)) state.arm = "target";
+    if (!sameShot(ed.before, snapshot())) {
+      pushUndo(ed.before);
+      persist();
+      announce(shotText());
+    } else if (state.fieldError[ed.which]) {
+      announce(state.fieldError[ed.which]);
+    }
+    requestRender();
+  }
+  // Escape: the field and the point go back to how they were before typing.
+  function cancelEdit(which) {
+    var ed = state.edit;
+    delete state.draft[which + "x"];
+    delete state.draft[which + "y"];
+    state.fieldError[which] = "";
+    if (ed && ed.which === which) {
+      state.edit = null;
+      state[which] = ed.before[which];
+      state.source[which] = ed.before.source[which];
+    }
+    requestRender();
+  }
+  function readField(which, axis) { return Core.readAxis(fieldStr(which, axis), MAX_UNITS); }
+  function axisError(which, final) {
+    var x = readField(which, "x"), y = readField(which, "y"), p = state[which], bad = [];
+    if (x.error === "format" || x.error === "range") bad.push("X");
+    if (y.error === "format" || y.error === "range") bad.push("Y");
+    var keep = p ? " Still using X " + fmt(p.x) + " / Y " + fmt(p.y) + "." : "";
+    if (bad.length) return bad.join(" and ") + " must be a number from " + RANGE_TXT + "." + keep;
+    if (final && (x.error || y.error)) return "Enter both X and Y, " + RANGE_TXT + "." + keep;
+    return "";
+  }
+  // Leaving the field: a complete, valid draft gives way to the point it set,
+  // an untouched-empty one to the point it left alone, and anything else
+  // stays in the field beside the reason it was not used.
+  function settleDrafts(which) {
+    var kx = which + "x", ky = which + "y";
+    if (state.draft[kx] === undefined && state.draft[ky] === undefined) return;
+    var x = readField(which, "x"), y = readField(which, "y");
+    var blank = x.error === "empty" && y.error === "empty";
+    if ((x.value !== null && y.value !== null) || blank) {
+      delete state.draft[kx];
+      delete state.draft[ky];
+      state.fieldError[which] = "";
+    } else {
+      state.fieldError[which] = axisError(which, true);
+    }
+  }
+  function units(v) { return Math.round(v * UNIT * 1000) / 1000; }
+  function writeAxis(which, axis, raw) {
+    beginEdit(which);
+    state.draft[which + axis] = String(raw);
+    state.fieldError[which] = axisError(which, false);
+    var x = readField(which, "x"), y = readField(which, "y");
+    if (x.value !== null && y.value !== null) {
+      var p = { x: units(x.value), y: units(y.value) };
+      if (!samePoint(state[which], p)) {
+        state[which] = p;
+        state.source[which] = "typed";
+      }
+    }
+    requestRender();
+  }
+
+  /* ---- the setup dialog ---- */
+  function focusSetup() {
+    var on = elMapGrid.querySelector(".mcard.is-on") || elMapGrid.querySelector(".mcard");
+    if (on) on.focus();
+  }
+  function openSetup() {
+    if (state.setupOpen) return;
+    endEdit();
+    state.setupSnapshot = { map: state.map, weapon: state.weapon, view: Core.copy(state.view),
+      shot: snapshot(), undo: state.undo.slice(), gunLocked: state.gunLocked };
+    state.setupFocus = document.activeElement;
+    state.setupOpen = true;
+    render();
+    focusSetup();
+  }
+  // CANCEL only exists when there is a board to go back to; the first
+  // visit has to pick a map and a weapon.
+  function closeSetup(cancel) {
+    var snap = state.setupSnapshot;
+    if (cancel) {
+      if (!snap) return;
+      if (state.map !== snap.map) {
+        state.map = snap.map;
+        loadPack(state.map);
+      }
+      state.weapon = snap.weapon;
+      state.view = snap.view;
+      state.gunLocked = snap.gunLocked;
+      restoreShot(snap.shot);
+      state.undo = snap.undo;
+    }
+    state.setupOpen = false;
+    state.setupSnapshot = null;
+    persist();
+    render();
+    var back = state.setupFocus;
+    state.setupFocus = null;
+    if (back && back.focus && document.body.contains(back)) back.focus();
+  }
 
   // The renders ship bright and green; the in-game map is dark and very nearly
   // grey. Each map's slope/intercept was measured against a real capture, so
@@ -1317,24 +1751,31 @@
   var $ = function (id) { return document.getElementById(id); };
   var elMap = $("map"), elGround = $("ground"), elRaster = $("raster"), elOvl = $("ovl");
   var elPinGun = $("pinGun"), elPinTgt = $("pinTgt"), elPinGunLbl = $("pinGunLbl");
-  var elScale = $("scaleOut"), elHint = $("hintOut"), elCursor = $("cursorOut");
+  var elScale = $("scaleOut"), elHint = $("hintOut"), elHintArm = $("hintArm"), elCursor = $("cursorOut");
+  var elHdr = $("hdr"), elBody = document.querySelector(".body");
   var elCtxMap = $("ctxMap"), elCtxWpn = $("ctxWpn");
   var elRange = $("rangeOut"), elBrg = $("brgOut"), elDrive = $("driveOut"), elVerdict = $("verdictOut");
-  var elGunLbl = $("gunLbl"), elArmGun = $("armGun"), elArmTgt = $("armTgt");
-  var elPaste = $("pasteIn"), elSavedList = $("savedList");
-  var elSetup = $("setup"), elStep2 = $("step2"), elMapGrid = $("mapGrid"), elWpnGrid = $("wpnGrid");
+  var elPlace = $("placeOut"), elAnnounce = $("announce");
+  var elGunLbl = $("gunLbl"), elArmGun = $("armGun"), elArmTgt = $("armTgt"), elLockGun = $("lockGun");
+  var elSaveBtn = $("saveBtn"), elSavedList = $("savedList");
+  var elFit = $("fitBtn"), elZoomIn = $("zoomIn"), elZoomOut = $("zoomOut"), elUndo = $("undoBtn");
+  var elLoadChip = $("loadChip"), elLoadChipTxt = $("loadChipTxt"), elChipRetry = $("chipRetry");
+  var elSetup = $("setup"), elSetupCancel = $("setupCancel"), elStep2 = $("step2");
+  var elMapGrid = $("mapGrid"), elWpnGrid = $("wpnGrid");
   var elLoad = $("loadStep"), elLoadLbl = $("loadLbl"), elLoadNum = $("loadNum");
-  var elLoadFill = $("loadFill"), elLoadSkip = $("loadSkip");
+  var elLoadFill = $("loadFill"), elLoadRetry = $("loadRetry");
   var fields = {
     gunx: $("gunX"), guny: $("gunY"),
     targetx: $("tgtX"), targety: $("tgtY")
   };
+  var pasteFields = { gun: $("gunPaste"), target: $("pasteIn") };
+  var coordMsgs = { gun: $("gunCoordMsg"), target: $("targetCoordMsg") };
 
   /* ---- setup cards, built once and then only toggled ---- */
   function buildCards() {
     elMapGrid.innerHTML = MAP_ORDER.map(function (id) {
       var d = MAPS[id];
-      return '<button class="mcard" type="button" data-id="' + id + '">' +
+      return '<button class="mcard" type="button" aria-pressed="false" data-id="' + id + '">' +
         '<span class="mcard-art" style="background-image:url(\'' + mapUrl(id + ".webp") + '\')"></span>' +
         '<span class="mcard-scrim"></span>' +
         '<span class="mcard-txt">' +
@@ -1344,7 +1785,7 @@
     }).join("");
     elWpnGrid.innerHTML = WEAPON_ORDER.map(function (id) {
       var w = WEAPONS[id];
-      return '<button class="wcard" type="button" data-id="' + id + '">' +
+      return '<button class="wcard" type="button" aria-pressed="false" data-id="' + id + '">' +
         '<span class="wcard-txt">' +
         '<span class="wcard-name">' + w.name + '</span>' +
         '<span class="wcard-sub">' + w.sub + '</span>' +
@@ -1455,10 +1896,6 @@
     }).catch(function () { return null; });
   }
 
-  function packReady(map) {
-    return !tileMeta(map) || (pack.map === map && !!(pack.done || pack.stored));
-  }
-
   function loadPack(map) {
     if (pack.map === map) return;
     var old = pack.urls;
@@ -1475,62 +1912,85 @@
         if (p !== pack) return;
         p.checked = true;
         p.stored = !!m;
-        // Picked on an earlier visit but never finished: that visit's player
-        // lands on the board, so bring the bar up over it.
-        if (!p.stored && state.map === map && state.weapon && !state.setupOpen) {
-          state.setupOpen = true;
-          state.holding = true;
-        }
-        // And a weapon picked in the moment before the disk answered.
-        if (p.stored && state.holding && state.map === map) {
-          state.holding = false;
-          state.setupOpen = false;
-        }
         requestRender();
-        var next = 0;
-        function worker() {
-          if (p !== pack || next >= p.list.length) return Promise.resolve();
-          var id = p.list[next++];
-          return getTile(cache, tileUrl(id)).then(function (blob) {
-            if (p !== pack) return;
-            if (blob) {
-              p.urls[id] = URL.createObjectURL(blob);
-              p.bytes += blob.size;
-            } else {
-              p.failed++;
-            }
-            p.got++;
-            requestRender();
-          }).then(worker);
-        }
-        var workers = [];
-        for (var w = 0; w < PACK_WORKERS; w++) workers.push(worker());
-        return Promise.all(workers).then(function () {
-          if (p !== pack) return;
-          p.done = true;
-          if (cache && !p.failed) cache.put(markUrl(map), new Response("")).catch(function () {});
-          if (state.holding && state.map === map) {
-            state.holding = false;
-            state.setupOpen = false;
-          }
-          requestRender();
-        });
+        return fetchPack(p, p.list, cache);
       });
     });
   }
+  function dropTile(id) {
+    var n = tileNodes[id];
+    if (!n) return;
+    n.gone = true;
+    n.el.removeAttribute("src");
+    if (n.el.parentNode) n.el.parentNode.removeChild(n.el);
+    delete tileNodes[id];
+  }
+  function fetchPack(p, ids, cache) {
+    var next = 0;
+    function worker() {
+      if (p !== pack || next >= ids.length) return Promise.resolve();
+      var id = ids[next++];
+      return getTile(cache, tileUrl(id)).then(function (blob) {
+        if (p !== pack) return;
+        if (blob) {
+          p.urls[id] = URL.createObjectURL(blob);
+          p.bytes += blob.size;
+          // A square on the board that gave up on its own fetch is drawn
+          // again from this copy.
+          var n = tileNodes[id];
+          if (n && n.done && !n.ok) dropTile(id);
+        } else {
+          p.failed++;
+        }
+        p.got++;
+        requestRender();
+      }).then(worker);
+    }
+    var workers = [];
+    for (var w = 0; w < PACK_WORKERS; w++) workers.push(worker());
+    return Promise.all(workers).then(function () {
+      if (p !== pack) return;
+      p.done = true;
+      if (cache && !p.failed) cache.put(markUrl(p.map), new Response("")).catch(function () {});
+      requestRender();
+    });
+  }
+  // RETRY asks again for only the squares that never arrived.
+  function retryPack() {
+    var p = pack;
+    if (!p.done || !p.failed) return;
+    var missing = p.list.filter(function (id) { return !p.urls[id]; });
+    p.failed = 0;
+    p.done = false;
+    p.got -= missing.length;
+    missing.forEach(dropTile);
+    requestRender();
+    openCache().then(function (cache) { return fetchPack(p, missing, cache); });
+  }
 
+  // Only a real download shows. A map read back off the disk is ready
+  // before anyone could zoom in far enough to need it. The board never
+  // waits for it: the overview is there at once, anything on screen is
+  // fetched directly, and the chip over the map says how far the rest is.
   function drawLoad() {
-    // Only a real download shows. A map read back off the disk is ready
-    // before anyone could zoom in far enough to need it.
     var p = state.map && pack.map === state.map && pack.checked && !pack.stored && pack.list.length ? pack : null;
+    var partial = !!(p && p.done && p.failed);
+    var pct = p ? (p.done ? 100 : Math.min(100, 100 * p.bytes / (p.of || 1))) : 0;
+    elLoadChip.hidden = !p || (p.done && !p.failed);
+    elLoadChip.classList.toggle("is-bad", partial);
+    elChipRetry.hidden = !partial;
+    if (p) {
+      setText(elLoadChipTxt, partial ? "MAP DETAIL: " + p.failed + " OF " + p.list.length + " SQUARES MISSING"
+        : "LOADING MAP DETAIL · " + Math.floor(pct) + "%");
+    }
     elLoad.hidden = !Object.keys(TILES.maps || {}).length;
     elLoad.style.visibility = p ? "" : "hidden";
+    elLoadRetry.hidden = !partial;
     if (!p) return;
-    setText(elLoadLbl, "03\u00a0\u00a0" + (p.done ? "MAP DETAIL READY" : "LOADING MAP DETAIL"));
+    setText(elLoadLbl, "03\u00a0\u00a0" + (partial ? "MAP DETAIL PARTIAL" : p.done ? "MAP DETAIL READY" : "LOADING MAP DETAIL"));
     setText(elLoadNum, mapDef().name.toUpperCase() + " · " + (p.bytes / 1e6).toFixed(1) + " / " +
       (p.of / 1e6).toFixed(1) + " MB");
-    elLoadFill.style.width = (p.done ? 100 : Math.min(100, 100 * p.bytes / (p.of || 1))).toFixed(1) + "%";
-    elLoadSkip.hidden = !state.holding || p.done;
+    elLoadFill.style.width = pct.toFixed(1) + "%";
   }
 
   /* ---- drawing the tiles ---- */
@@ -1656,23 +2116,27 @@
     var env = sol ? Core.envelope(sol.range, w) : null;
     var colour = env ? VERDICT[env.level] : C_UNSOLVED;
 
-    /* setup overlay */
+    /* setup dialog: everything behind it is out of reach while it is up */
     elSetup.hidden = !s.setupOpen;
+    elSetupCancel.hidden = !s.setupSnapshot;
+    elHdr.inert = elBody.inert = !!s.setupOpen;
     drawLoad();
     elStep2.classList.toggle("is-waiting", !s.map);
     Array.prototype.forEach.call(elMapGrid.children, function (b) {
-      b.classList.toggle("is-on", b.getAttribute("data-id") === s.map);
+      var on = b.getAttribute("data-id") === s.map;
+      b.classList.toggle("is-on", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
     });
     Array.prototype.forEach.call(elWpnGrid.children, function (b) {
-      b.classList.toggle("is-on", b.getAttribute("data-id") === s.weapon);
+      var on = b.getAttribute("data-id") === s.weapon;
+      b.classList.toggle("is-on", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
     });
 
-    /* header */
+    /* header: the pointer's coordinates, and nothing else competes for it */
     setText(elCtxMap, s.map ? d.name : "—");
     setText(elCtxWpn, s.weapon ? w.short : "—");
-    setText(elCursor, s.cursor
-      ? "X " + fmt(s.cursor.x) + " Y " + fmt(s.cursor.y)
-      : (s.map ? d.note : ""));
+    setText(elCursor, s.cursor ? "X " + fmt(s.cursor.x) + " Y " + fmt(s.cursor.y) : "");
 
     /* raster */
     var tl = toScreen({ x: 0, y: TERRAIN }), br = toScreen({ x: TERRAIN, y: 0 });
@@ -1686,34 +2150,115 @@
     elMap.classList.toggle("is-panning", !!(s.drag && s.drag.kind === "pan"));
 
     drawOverlay(w, env);
-    drawPins(w, sol);
+    drawPins(w);
 
     /* status chip */
     var mpp = 1 / k();
-    setText(elScale, (mpp < 1 ? mpp.toFixed(2) : String(Math.round(mpp))) + " M/PX · DOUBLE-CLICK TO FIT");
-    setText(elHint, !s.gun ? "CLICK TO PLACE YOUR " + w.short
-      : !s.target ? "CLICK TO PLACE THE TARGET" : "DRAG A PIN TO ADJUST");
+    setText(elScale, (mpp < 1 ? mpp.toFixed(2) : String(Math.round(mpp))) + " M/PX");
+    setText(elHintArm, armName());
+    setText(elHint, s.gun || s.target ? "· DRAG A PIN TO MOVE IT" : "");
 
     /* solution */
     setText(elRange, sol ? Math.round(sol.range).toLocaleString("en-US") : "—");
     elRange.style.color = colour;
-    setText(elBrg, sol ? sol.brg.toFixed(1) + "°" : "—");
+    setText(elBrg, Core.bearingText(sol));
     setText(elDrive, sol ? Core.driveTime(sol.range, DRIVE_KMH) : "—");
-    setText(elVerdict, env ? env.label : "PLACE BOTH POINTS");
+    setText(elVerdict, verdictText(env));
     elVerdict.style.color = env ? colour : C_DEAD;
     elVerdict.style.background = env ? colour + "1a" : "transparent";
     elVerdict.style.borderColor = env ? colour + "55" : C_CHIPBRD;
+    setText(elPlace, placementNote());
 
     /* endpoints */
     setText(elGunLbl, w.short);
-    elArmGun.classList.toggle("is-on", s.arm === "gun");
+    elArmGun.classList.toggle("is-on", s.arm === "gun" && !s.gunLocked);
     elArmTgt.classList.toggle("is-on", s.arm === "target");
-    setValue(fields.gunx, fieldStr("gun", "x"));
-    setValue(fields.guny, fieldStr("gun", "y"));
-    setValue(fields.targetx, fieldStr("target", "x"));
-    setValue(fields.targety, fieldStr("target", "y"));
+    elArmGun.setAttribute("aria-pressed", s.arm === "gun" && !s.gunLocked ? "true" : "false");
+    elArmTgt.setAttribute("aria-pressed", s.arm === "target" ? "true" : "false");
+    elArmGun.disabled = s.gunLocked;
+    elLockGun.classList.toggle("is-on", s.gunLocked);
+    elLockGun.setAttribute("aria-pressed", s.gunLocked ? "true" : "false");
+    setText(elLockGun, s.gunLocked ? "LOCKED" : "LOCK");
+    elLockGun.disabled = !s.gun && !s.gunLocked;
+    fields.gunx.readOnly = fields.guny.readOnly = s.gunLocked;
+    pasteFields.gun.disabled = s.gunLocked;
+    elUndo.disabled = !canUndo();
+    elSaveBtn.disabled = !s.target;
+    ["gun", "target"].forEach(function (which) {
+      ["x", "y"].forEach(function (axis) {
+        var el = fields[which + axis];
+        setValue(el, fieldStr(which, axis));
+        var bad = !!s.fieldError[which] && readField(which, axis).value === null;
+        el.classList.toggle("is-bad", bad);
+        el.setAttribute("aria-invalid", bad ? "true" : "false");
+      });
+      var msg = coordMsgs[which];
+      setText(msg, coordLine(which));
+      msg.classList.toggle("is-bad", !!s.fieldError[which]);
+      msg.classList.toggle("is-ok", !s.fieldError[which] && !!s[which]);
+    });
 
     drawSaved();
+  }
+
+  function armName() { return state.arm === "gun" && !state.gunLocked ? weapon().short : "TARGET"; }
+  function verdictText(env) {
+    if (!env) return "PLACE BOTH POINTS";
+    if (env.level === "ok") return "WITHIN LEVEL-GROUND RANGE";
+    if (env.level === "high") return "WITHIN LEVEL-GROUND RANGE · HIGH ARC ONLY";
+    return env.label;
+  }
+  // What the endpoint is, in words, under its fields.
+  function coordLine(which) {
+    var s = state, p = s[which], name = which === "gun" ? "Gun" : "Target";
+    if (s.fieldError[which]) return s.fieldError[which];
+    if (p && which === "gun" && s.gunLocked) return "Gun locked at X " + fmt(p.x) + " / Y " + fmt(p.y);
+    if (p) return name + " set: X " + fmt(p.x) + " / Y " + fmt(p.y) + " · " + (s.source[which] || "placed");
+    if (s.draft[which + "x"] !== undefined || s.draft[which + "y"] !== undefined) {
+      return "Enter both X and Y to set the " + name.toLowerCase() + ".";
+    }
+    return (armName() === "TARGET") === (which === "target")
+      ? "Click the map, type X and Y, or paste a Mark Coordinates line."
+      : "Type X and Y, or paste a Mark Coordinates line.";
+  }
+  // How much the map's own alignment matters to these two points. The
+  // registration figures are the map's, not a radius round the shot.
+  function placementNote() {
+    var s = state, d = mapDef();
+    if (!s.map) return "";
+    var mapNote = d.name.toUpperCase() + " MAP " + d.note;
+    var ends = [], onMap = false;
+    [["gun", weapon().short], ["target", "TARGET"]].forEach(function (e) {
+      if (!s[e[0]]) return;
+      var src = s.source[e[0]] || "saved";
+      ends.push(e[1] + " " + src.toUpperCase());
+      if (src === "clicked" || src === "dragged" || src === "saved") onMap = true;
+    });
+    if (!ends.length) return mapNote;
+    if (onMap) return ends.join(" · ") + "\n" + mapNote + "\nPASTE GAME COORDINATES FOR PRECISION";
+    return ends.join(" · ") + "\nMAP ALIGNMENT PLAYS NO PART";
+  }
+
+  /* ---- spoken results: only what was committed, never the pointer ---- */
+  var announceTimer = null;
+  function announce(text) {
+    clearTimeout(announceTimer);
+    elAnnounce.textContent = "";
+    announceTimer = setTimeout(function () { elAnnounce.textContent = text; }, 60);
+  }
+  function sentence(t) {
+    t = String(t).replace(/ · /g, ", ");
+    return t.charAt(0) + t.slice(1).toLowerCase();
+  }
+  function shotText() {
+    var s = state;
+    if (!s.gun || !s.target) {
+      return s.gun ? "Gun set. Place the target." : s.target ? "Target set. Place the gun." : "No points placed.";
+    }
+    var sol = Core.solve(s.gun, s.target), b = Core.bearingText(sol);
+    return "Range " + Math.round(sol.range) + " metres, bearing " +
+      (b === "—" ? "none, the points are the same" : b + " degrees") + ". " +
+      sentence(verdictText(Core.envelope(sol.range, weapon()))) + ".";
   }
 
   function drawOverlay(w, env) {
@@ -1800,8 +2345,9 @@
     parts.push('<g class="olab">' + names.join("") + '</g>');
 
     /* what the gun can reach from where it stands */
-    if (s.gun) {
-      var g = toScreen(s.gun);
+    var activeGun = point("gun"), activeTarget = point("target");
+    if (activeGun) {
+      var g = toScreen(activeGun);
       function ring(r, stroke, o, width, dash) {
         parts.push('<circle cx="' + g.x.toFixed(1) + '" cy="' + g.y.toFixed(1) +
           '" r="' + Math.max(1, r).toFixed(1) + '" fill="none" stroke="' + stroke +
@@ -1813,8 +2359,8 @@
     }
 
     /* the shot itself, coloured by whether it is on */
-    if (s.gun && s.target) {
-      var a = toScreen(s.gun), b = toScreen(s.target);
+    if (activeGun && activeTarget) {
+      var a = toScreen(activeGun), b = toScreen(activeTarget);
       parts.push('<line x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) +
         '" x2="' + b.x.toFixed(1) + '" y2="' + b.y.toFixed(1) +
         '" stroke="' + (env ? VERDICT[env.level] : C_GOLD) +
@@ -1824,7 +2370,7 @@
     elOvl.innerHTML = parts.join("") + '<g class="glab">' + labels.join("") + '</g>';
   }
 
-  function drawPins(w, sol) {
+  function drawPins(w) {
     function place(el, p) {
       if (!p) { el.hidden = true; return; }
       var sp = toScreen(p);
@@ -1833,110 +2379,176 @@
       el.style.top = sp.y.toFixed(1) + "px";
     }
     setText(elPinGunLbl, w.short);
-    place(elPinGun, state.gun);
-    place(elPinTgt, state.target);
+    place(elPinGun, point("gun"));
+    place(elPinTgt, point("target"));
+    elPinGun.classList.toggle("is-locked", state.gunLocked);
+    elPinGun.classList.toggle("is-armed", state.arm === "gun" && !state.gunLocked);
+    elPinTgt.classList.toggle("is-armed", state.arm === "target");
   }
 
+  // Rows are rebuilt only when the list itself changes, so a hover redraw
+  // never takes keyboard focus off one. Everything else is updated in place.
+  var savedKey = null;
   function drawSaved() {
     var list = savedList();
-    if (!list.length) {
-      elSavedList.innerHTML = '<p class="saved-empty">NOTHING SAVED ON THIS MAP</p>';
-      return;
+    var key = state.map + "|" + state.renaming + "|" + list.map(function (r) { return r.id; }).join(",");
+    if (key !== savedKey) {
+      savedKey = key;
+      elSavedList.innerHTML = list.length ? list.map(function (row) {
+        var naming = String(row.id) === String(state.renaming);
+        return '<div class="srow" data-id="' + row.id + '">' +
+          (naming
+            ? '<input class="srow-name-in" maxlength="40" autocomplete="off" spellcheck="false" aria-label="Name for this saved target">'
+            : '<button class="srow-main" type="button"><span class="srow-name"></span><span class="srow-coords"></span></button>') +
+          '<span class="srow-range"></span>' +
+          '<button class="srow-ren" type="button">\u270e</button>' +
+          '<button class="srow-kill" type="button">×</button>' +
+          '</div>';
+      }).join("") : '<p class="saved-empty">NOTHING SAVED ON THIS MAP</p>';
+      var input = elSavedList.querySelector(".srow-name-in");
+      var hit = input && findSaved(state.renaming);
+      if (hit) input.value = hit.name;
     }
     var g = state.gun;
-    elSavedList.innerHTML = list.map(function (row) {
+    list.forEach(function (row) {
+      var item = elSavedList.querySelector('.srow[data-id="' + row.id + '"]');
+      if (!item) return;
+      var main = item.querySelector(".srow-main");
+      if (main) {
+        // Names are user text, so they go in as text rather than as markup.
+        setText(item.querySelector(".srow-name"), row.name);
+        setText(item.querySelector(".srow-coords"), fmt(row.x) + " / " + fmt(row.y));
+        main.setAttribute("aria-label", "Use " + row.name + " as the target, X " + fmt(row.x) + " Y " + fmt(row.y));
+      }
+      item.querySelector(".srow-ren").setAttribute("aria-label", "Rename " + row.name);
+      item.querySelector(".srow-kill").setAttribute("aria-label", "Delete " + row.name);
       var r = g ? Math.hypot(row.x - g.x, row.y - g.y) : null;
-      var colour = r === null ? C_DEAD : VERDICT[Core.envelope(r, weapon()).level];
-      return '<div class="srow" data-id="' + row.id + '">' +
-        '<button class="srow-main" type="button">' +
-        '<span class="srow-name"></span>' +
-        '<span class="srow-coords">' + fmt(row.x) + " / " + fmt(row.y) + '</span>' +
-        '</button>' +
-        '<span class="srow-range" style="color:' + colour + '">' +
-        (r === null ? "—" : Math.round(r) + " m") + '</span>' +
-        '<button class="srow-kill" type="button" aria-label="Delete">×</button>' +
-        '</div>';
-    }).join("");
-    // Names are user text, so they go in as text rather than as markup.
-    Array.prototype.forEach.call(elSavedList.querySelectorAll(".srow-name"), function (el, i) {
-      el.textContent = list[i].name;
+      var range = item.querySelector(".srow-range");
+      range.style.color = r === null ? C_DEAD : VERDICT[Core.envelope(r, weapon()).level];
+      setText(range, r === null ? "—" : Math.round(r) + " m");
     });
   }
 
   /* ---- placing and adjusting ---- */
-  function setPoint(which, world, advance) {
-    var p = clampPoint(world);
+  // A gun that is clicked, pasted or typed hands the next click to the
+  // target, so a precise gun is not the thing the next click moves. A drag
+  // leaves the armed endpoint alone: that is usually a correction under way.
+  function setPt(which, world, source) {
+    state[which] = clampPoint(world);
+    state.source[which] = source;
     delete state.draft[which + "x"];
     delete state.draft[which + "y"];
-    state[which] = p;
-    if (advance && which === "gun") state.arm = "target";
-    persist();
-    requestRender();
+    state.fieldError[which] = "";
+    if (which === "gun" && source !== "dragged") state.arm = "target";
+  }
+  function placeAt(world) {
+    change(function () { setPt(state.gunLocked ? "target" : state.arm, world, "clicked"); });
   }
 
-  var startPan = null, lastHover = null;
+  // One pointer at a time. A pan or a pin drag belongs to the pointer that
+  // started it; a second finger or button is ignored until it ends.
+  var gesture = null, lastPlace = null;
 
   elMap.addEventListener("pointerdown", function (e) {
-    if (e.button !== 0) return;
-    var r = elMap.getBoundingClientRect();
-    startPan = { x: e.clientX, y: e.clientY, cx: state.view.cx, cy: state.view.cy, moved: false, r: r };
+    if (e.button !== 0 || !e.isPrimary || gesture) return;
+    if (e.target.closest(".map-tools, .load-chip")) return;
+    gesture = { id: e.pointerId, kind: "pan", x: e.clientX, y: e.clientY, moved: false,
+                r: elMap.getBoundingClientRect(), cx: state.view.cx, cy: state.view.cy };
     state.drag = { kind: "pan" };
+    try { elMap.setPointerCapture(e.pointerId); } catch (ignore) {}
     requestRender();
   });
 
+  // A pin keeps the offset it was grabbed at, so taking it by the far end of
+  // its label never snaps the point to the pointer. Until it is let go it
+  // is only a preview: nothing is committed or stored mid-drag.
   function grab(which) {
     return function (e) {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || !e.isPrimary || gesture) return;
       e.stopPropagation();
       e.preventDefault();
-      startPan = { x: e.clientX, y: e.clientY, moved: false, r: elMap.getBoundingClientRect() };
-      state.drag = { kind: which };
+      if (!state[which] || (which === "gun" && state.gunLocked)) return;
+      var r = elMap.getBoundingClientRect();
+      gesture = { id: e.pointerId, kind: which, x: e.clientX, y: e.clientY, moved: false, r: r,
+                  start: Core.copy(state[which]),
+                  from: toWorld({ x: e.clientX - r.left, y: e.clientY - r.top }) };
+      state.drag = { kind: which, preview: Core.copy(state[which]) };
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch (ignore) {}
       requestRender();
     };
   }
   elPinGun.addEventListener("pointerdown", grab("gun"));
   elPinTgt.addEventListener("pointerdown", grab("target"));
 
-  window.addEventListener("pointermove", function (e) {
-    var drag = state.drag;
-    if (!drag || !startPan) return;
-    var dx = e.clientX - startPan.x, dy = e.clientY - startPan.y;
+  function follow(g, e) {
+    var dx = e.clientX - g.x, dy = e.clientY - g.y;
     // Three pixels of slop: a click that shifts a hair is still a click.
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) startPan.moved = true;
-    if (drag.kind === "pan") {
-      if (!startPan.moved) return;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) g.moved = true;
+    if (!g.moved) return;
+    if (g.kind === "pan") {
       var kk = k();
-      state.view = { cx: startPan.cx - dx / kk, cy: startPan.cy + dy / kk, span: state.view.span };
-      requestRender();
+      state.view = { cx: g.cx - dx / kk, cy: g.cy + dy / kk, span: state.view.span };
     } else {
-      setPoint(drag.kind, toWorld({ x: e.clientX - startPan.r.left, y: e.clientY - startPan.r.top }), false);
+      var to = toWorld({ x: e.clientX - g.r.left, y: e.clientY - g.r.top });
+      state.drag.preview = clampPoint(Core.dragPoint(g.start, g.from, to));
     }
-  });
-
-  function endDrag(e) {
-    var drag = state.drag;
-    if (!drag) return;
-    if (drag.kind === "pan" && startPan && !startPan.moved) {
-      // Where the click landed, not where the pointer was last seen moving:
-      // a pointer that arrives and clicks without ever moving -- a tap, or a
-      // synthetic click -- has no hover history to fall back on.
-      var at = e && e.clientX !== undefined
-        ? toWorld({ x: e.clientX - startPan.r.left, y: e.clientY - startPan.r.top })
-        : lastHover;
-      if (at) setPoint(state.arm, at, true);
-    }
-    state.drag = null;
-    persist();
     requestRender();
   }
-  window.addEventListener("pointerup", endDrag);
-  window.addEventListener("pointercancel", endDrag);
+  window.addEventListener("pointermove", function (e) {
+    if (gesture && e.pointerId === gesture.id) follow(gesture, e);
+  });
+
+  window.addEventListener("pointerup", function (e) {
+    var g = gesture;
+    if (!g || e.pointerId !== g.id) return;
+    // Where it was let go counts too: a pointer that lands well away from
+    // where it went down moved, whether or not a move was reported between.
+    follow(g, e);
+    var preview = state.drag && state.drag.preview;
+    gesture = null;
+    state.drag = null;
+    if (g.kind === "pan") {
+      if (!g.moved) clickAt(e, g);
+    } else if (g.moved && preview) {
+      change(function () { setPt(g.kind, preview, "dragged"); });
+    }
+    requestRender();
+  });
+
+  // Escape, or the browser taking the pointer away: a pin goes back to
+  // where it was picked up and a pan to where it started.
+  function cancelGesture() {
+    var g = gesture;
+    if (!g) return;
+    gesture = null;
+    state.drag = null;
+    if (g.kind === "pan") state.view = { cx: g.cx, cy: g.cy, span: state.view.span };
+    requestRender();
+  }
+  window.addEventListener("pointercancel", function (e) {
+    if (gesture && e.pointerId === gesture.id) cancelGesture();
+  });
+
+  function clickAt(e, g) {
+    // Where the click landed, not where the pointer was last seen moving:
+    // a tap, or a synthetic click, has no hover history to fall back on.
+    // The second half of a double-click is dropped. Double-click used to
+    // frame the map, and a hand that still reaches for it should not drop
+    // the target on top of the gun it just placed.
+    if (lastPlace && e.timeStamp - lastPlace.t < 450 &&
+        Math.hypot(e.clientX - lastPlace.x, e.clientY - lastPlace.y) < 6) {
+      lastPlace = null;
+      return;
+    }
+    lastPlace = { t: e.timeStamp, x: e.clientX, y: e.clientY };
+    placeAt(toWorld({ x: e.clientX - g.r.left, y: e.clientY - g.r.top }));
+  }
 
   elMap.addEventListener("pointermove", function (e) {
+    if (state.drag) return;
     var r = elMap.getBoundingClientRect();
-    var world = toWorld({ x: e.clientX - r.left, y: e.clientY - r.top });
-    lastHover = world;
-    if (!state.drag) { state.cursor = world; requestRender(); }
+    state.cursor = toWorld({ x: e.clientX - r.left, y: e.clientY - r.top });
+    requestRender();
   });
   elMap.addEventListener("pointerleave", function () {
     if (state.cursor) { state.cursor = null; requestRender(); }
@@ -1945,6 +2557,7 @@
   // Native and not passive: the page must be allowed to swallow the scroll.
   elMap.addEventListener("wheel", function (e) {
     e.preventDefault();
+    if (gesture) return;
     var r = elMap.getBoundingClientRect();
     var px = e.clientX - r.left, py = e.clientY - r.top;
     var world = toWorld({ x: px, y: py });
@@ -1958,160 +2571,314 @@
     requestRender();
   }, { passive: false });
 
-  elMap.addEventListener("dblclick", function () {
-    state.view = homeView(state.size);
-    requestRender();
-  });
-
-  /* ---- coordinate fields ---- */
-  // A field holds an uncommitted draft while it is being typed into. Binding
-  // the value straight to a 2dp format makes the field untypable: "1"
-  // reformats to "1.00" and the caret lands after it, so 103.83 can never be
-  // reached. The draft owns the display; the point still follows whatever
-  // parses, so the map moves as you type.
-  function writeAxis(which, axis, raw) {
-    state.draft[which + axis] = String(raw);
-    var v = parseFloat(String(raw).replace(",", "."));
-    if (isFinite(v)) {
-      var cur = state[which] || { x: 0, y: 0 };
-      var p = { x: cur.x, y: cur.y };
-      p[axis] = v * UNIT;
-      state[which] = clampPoint(p);
-      persist();
+  /* ---- the camera: none of this can move a point ---- */
+  var ZOOM_STEP = 1.5;
+  function fitShot() {
+    var a = state.gun, b = state.target;
+    if (a && b) {
+      var v = Core.fitView({ minX: Math.min(a.x, b.x), maxX: Math.max(a.x, b.x),
+                             minY: Math.min(a.y, b.y), maxY: Math.max(a.y, b.y) }, state.size, 1.6);
+      v.span = Math.max(MIN_SPAN * 4, Math.min(maxSpan(), v.span));
+      state.view = v;
+    } else if (a || b) {
+      state.view = { cx: (a || b).x, cy: (a || b).y, span: Math.min(state.view.span, 3000) };
+    } else {
+      state.view = homeView(state.size);
     }
     requestRender();
   }
-  function nudge(which, axis, e) {
-    if (e.key === "Enter") { e.currentTarget.blur(); return; }
+  function zoomBy(factor) {
+    var span = Math.min(maxSpan(), Math.max(MIN_SPAN, state.view.span * factor));
+    state.view = { cx: state.view.cx, cy: state.view.cy, span: span };
+    requestRender();
+  }
+  elFit.addEventListener("click", fitShot);
+  elZoomIn.addEventListener("click", function () { zoomBy(1 / ZOOM_STEP); });
+  elZoomOut.addEventListener("click", function () { zoomBy(ZOOM_STEP); });
+  elUndo.addEventListener("click", undo);
+
+  function typingIn(t) {
+    return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+  }
+  window.addEventListener("keydown", function (e) {
+    var key = e.key || "";
+    if (key === "Escape" && gesture) { e.preventDefault(); cancelGesture(); return; }
+    if (state.setupOpen || e.defaultPrevented) return;
+    var mod = e.ctrlKey || e.metaKey;
+    if (mod && !e.altKey && !e.shiftKey && key.toLowerCase() === "z") {
+      if (typingIn(e.target)) return;       // inside a field, undo keeps editing the text
+      e.preventDefault();
+      undo();
+      return;
+    }
+    if (mod || e.altKey || typingIn(e.target)) return;
+    if (key === "f" || key === "F") { e.preventDefault(); fitShot(); }
+    else if (key === "+" || key === "=") { e.preventDefault(); zoomBy(1 / ZOOM_STEP); }
+    else if (key === "-" || key === "_") { e.preventDefault(); zoomBy(ZOOM_STEP); }
+  });
+
+  /* ---- coordinate fields ---- */
+  function fieldKey(which, axis, e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (gesture) cancelGesture();
+      else cancelEdit(which);
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      endEdit();
+      if (!state.fieldError[which]) e.currentTarget.blur();
+      return;
+    }
     if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
     var cur = state[which];
-    if (!cur) return;
+    if (!cur || (which === "gun" && state.gunLocked)) return;
     e.preventDefault();
-    // Step from the committed value, never from half-typed text.
+    beginEdit(which);
+    // Step from the point in use, never from half-typed text.
     delete state.draft[which + axis];
     var p = { x: cur.x, y: cur.y };
     p[axis] += (e.shiftKey ? 10 : 1) * (e.key === "ArrowUp" ? 1 : -1);
     state[which] = clampPoint(p);
-    persist();
+    state.fieldError[which] = axisError(which, false);
     requestRender();
   }
   ["gun", "target"].forEach(function (which) {
     ["x", "y"].forEach(function (axis) {
       var el = fields[which + axis];
-      el.addEventListener("input", function () { writeAxis(which, axis, el.value); });
-      el.addEventListener("keydown", function (e) { nudge(which, axis, e); });
-      el.addEventListener("blur", function () {
-        delete state.draft[which + axis];
-        requestRender();
+      el.addEventListener("input", function () {
+        if (which === "gun" && state.gunLocked) return;
+        writeAxis(which, axis, el.value);
+      });
+      el.addEventListener("keydown", function (e) { fieldKey(which, axis, e); });
+      el.addEventListener("blur", function (e) {
+        // Moving between the X and Y of one endpoint is still one edit.
+        var next = e.relatedTarget;
+        if (next === fields[which + "x"] || next === fields[which + "y"]) return;
+        endEdit();
+      });
+      // A whole Mark Coordinates line pasted into either box sets both.
+      el.addEventListener("paste", function (e) {
+        var text = e.clipboardData && e.clipboardData.getData("text");
+        if (!text || Core.readAxis(text, MAX_UNITS).error !== "format" || !Core.parsePair(text)) return;
+        e.preventDefault();
+        takePaste(which, text);
       });
     });
   });
 
   /* ---- a coordinate marked in game and pasted out of chat ---- */
-  var pasteTimer = null;
-  function takePaste(text) {
-    var p = Core.gamePoint(text, UNIT);
+  var pasteTimers = {};
+  function takePaste(which, text) {
+    if (which === "gun" && state.gunLocked) return false;
+    var input = pasteFields[which];
+    var pair = Core.parsePair(text), p = Core.boundedGamePoint(text, UNIT, MAX_UNITS);
     if (!p) {
-      elPaste.classList.remove("is-ok");
-      elPaste.classList.add("is-bad");
+      input.classList.remove("is-ok");
+      input.classList.add("is-bad");
+      state.fieldError[which] = pair
+        ? "That reads X " + pair.x.toFixed(2) + " / Y " + pair.y.toFixed(2) + ", which is off the map. X and Y run " + RANGE_TXT + "."
+        : "No X and Y found. Paste the Mark Coordinates line from chat, like X 98.43 Y 62.45.";
+      requestRender();
+      announce(state.fieldError[which]);
       return false;
     }
-    setPoint("target", p, false);
-    elPaste.value = "";
-    elPaste.classList.remove("is-bad");
-    elPaste.classList.add("is-ok");
-    clearTimeout(pasteTimer);
-    pasteTimer = setTimeout(function () { elPaste.classList.remove("is-ok"); }, 700);
+    change(function () { setPt(which, { x: units(p.x / UNIT), y: units(p.y / UNIT) }, "pasted"); });
+    input.value = "";
+    input.classList.remove("is-bad");
+    input.classList.add("is-ok");
+    clearTimeout(pasteTimers[which]);
+    pasteTimers[which] = setTimeout(function () { input.classList.remove("is-ok"); }, 1200);
     return true;
   }
-  elPaste.addEventListener("paste", function (e) {
-    var text = e.clipboardData && e.clipboardData.getData("text");
-    if (!text || !Core.parsePair(text)) return;   // let an unparseable paste land and be edited
-    e.preventDefault();
-    takePaste(text);
-  });
-  elPaste.addEventListener("keydown", function (e) {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    takePaste(elPaste.value);
-  });
-  elPaste.addEventListener("input", function () {
-    if (!elPaste.value) elPaste.classList.remove("is-bad");
+  ["gun", "target"].forEach(function (which) {
+    var input = pasteFields[which];
+    input.addEventListener("paste", function (e) {
+      var text = e.clipboardData && e.clipboardData.getData("text");
+      if (!text || !Core.parsePair(text)) return;   // let an unparseable paste land and be edited
+      e.preventDefault();
+      takePaste(which, text);
+    });
+    input.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      takePaste(which, input.value);
+    });
+    input.addEventListener("input", function () {
+      if (input.value) return;
+      input.classList.remove("is-bad");
+      if (!state.draft[which + "x"] && !state.draft[which + "y"]) { state.fieldError[which] = ""; requestRender(); }
+    });
   });
 
   /* ---- rail controls ---- */
-  elArmGun.addEventListener("click", function () { state.arm = "gun"; requestRender(); });
-  elArmTgt.addEventListener("click", function () { state.arm = "target"; requestRender(); });
-
-  $("saveBtn").addEventListener("click", function () {
-    if (!state.target || !state.map) return;
-    var list = savedList().slice();
-    list.unshift({ id: Date.now(), name: "Target " + (list.length + 1),
-                   x: state.target.x, y: state.target.y });
-    state.saved[state.map] = list.slice(0, SAVED_CAP);
-    persist();
+  elArmGun.addEventListener("click", function () {
+    if (state.gunLocked) return;
+    state.arm = "gun";
     requestRender();
   });
+  elArmTgt.addEventListener("click", function () { state.arm = "target"; requestRender(); });
+  // A locked gun stays put while targets come and go: clicks, drags, typing
+  // and pastes all leave it alone until it is unlocked.
+  elLockGun.addEventListener("click", function () {
+    if (!state.gun && !state.gunLocked) return;
+    endEdit();
+    state.gunLocked = !state.gunLocked;
+    if (state.gunLocked) {
+      state.arm = "target";
+      delete state.draft.gunx;
+      delete state.draft.guny;
+      state.fieldError.gun = "";
+    }
+    persist();
+    requestRender();
+    announce(state.gunLocked ? "Gun locked." : "Gun unlocked.");
+  });
+
+  function startRename(id) {
+    state.renaming = String(id);
+    drawSaved();
+    var input = elSavedList.querySelector(".srow-name-in");
+    if (input) { input.focus(); input.select(); }
+  }
+  function finishRename(id, text, keep, refocus) {
+    if (state.renaming !== String(id)) return;
+    state.renaming = null;
+    var hit = findSaved(id), name = String(text || "").trim().slice(0, 40);
+    if (keep && hit && name && name !== hit.name) change(function () { hit.name = name; });
+    drawSaved();
+    var ren = refocus && elSavedList.querySelector('.srow[data-id="' + id + '"] .srow-ren');
+    if (ren) ren.focus();
+    requestRender();
+  }
+
+  elSaveBtn.addEventListener("click", function () {
+    if (!state.target || !state.map) return;
+    var row = null;
+    change(function () {
+      var list = savedList().slice();
+      row = { id: Date.now(), name: Core.nextSavedName(list),
+              x: state.target.x, y: state.target.y, src: state.source.target };
+      list.unshift(row);
+      state.saved[state.map] = list.slice(0, SAVED_CAP);
+    });
+    // Named where it is saved: type a name, or Enter to keep the default.
+    if (row) startRename(row.id);
+  });
   $("newBtn").addEventListener("click", function () {
-    state.target = null;
-    state.arm = "target";
-    delete state.draft.targetx;
-    delete state.draft.targety;
+    change(function () {
+      state.target = null;
+      state.source.target = null;
+      state.arm = "target";
+      delete state.draft.targetx;
+      delete state.draft.targety;
+      state.fieldError.target = "";
+    });
+  });
+  $("clearBtn").addEventListener("click", function () {
+    change(function () {
+      state.gun = null;
+      state.target = null;
+      state.source = { gun: null, target: null };
+      state.arm = "gun";
+      state.draft = {};
+      state.fieldError = { gun: "", target: "" };
+    });
+    state.gunLocked = false;
     persist();
     requestRender();
   });
   elSavedList.addEventListener("click", function (e) {
     var row = e.target.closest(".srow");
     if (!row) return;
-    var id = row.getAttribute("data-id");
-    var hit = savedList().filter(function (r) { return String(r.id) === id; })[0];
+    var id = row.getAttribute("data-id"), hit = findSaved(id);
     if (!hit) return;
     if (e.target.closest(".srow-kill")) {
-      state.saved[state.map] = savedList().filter(function (r) { return String(r.id) !== id; });
-    } else {
-      setPoint("target", { x: hit.x, y: hit.y }, false);
+      if (state.renaming === id) state.renaming = null;
+      change(function () {
+        state.saved[state.map] = savedList().filter(function (r) { return String(r.id) !== id; });
+      });
+      drawSaved();
+      elSaveBtn.focus();
+    } else if (e.target.closest(".srow-ren")) {
+      if (state.renaming === id) return;
+      startRename(id);
+    } else if (e.target.closest(".srow-main")) {
+      change(function () { setPt("target", { x: hit.x, y: hit.y }, hit.src || "saved"); });
     }
-    persist();
-    requestRender();
+  });
+  elSavedList.addEventListener("keydown", function (e) {
+    if (!e.target.classList.contains("srow-name-in")) return;
+    var id = e.target.closest(".srow").getAttribute("data-id");
+    if (e.key === "Enter") { e.preventDefault(); finishRename(id, e.target.value, true, true); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finishRename(id, "", false, true); }
+  });
+  elSavedList.addEventListener("focusout", function (e) {
+    if (!e.target.classList.contains("srow-name-in")) return;
+    finishRename(e.target.closest(".srow").getAttribute("data-id"), e.target.value, true, false);
   });
 
   /* ---- setup ---- */
-  $("ctxBtn").addEventListener("click", function () {
-    state.setupOpen = true;
-    state.holding = false;
-    requestRender();
+  $("ctxBtn").addEventListener("click", openSetup);
+  elSetupCancel.addEventListener("click", function () { closeSetup(true); });
+  function tabbables(root) {
+    return Array.prototype.filter.call(
+      root.querySelectorAll("button, input, [href], [tabindex]:not([tabindex='-1'])"),
+      function (el) {
+        return !el.disabled && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+      });
+  }
+  elSetup.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      closeSetup(true);
+      return;
+    }
+    if (e.key !== "Tab") return;
+    var list = tabbables(elSetup);
+    if (!list.length) return;
+    var first = list[0], last = list[list.length - 1], at = document.activeElement;
+    if (e.shiftKey && (at === first || at === elSetup)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
   });
   elMapGrid.addEventListener("click", function (e) {
     var b = e.target.closest(".mcard");
     if (!b) return;
-    // Picking a map is destructive on purpose: it doubles as start over.
-    state.map = b.getAttribute("data-id");
-    state.holding = false;
-    loadPack(state.map);
-    state.gun = null;
-    state.target = null;
-    state.arm = "gun";
-    state.draft = {};
-    state.view = homeView(state.size);
-    persist();
-    requestRender();
+    var next = b.getAttribute("data-id");
+    if (next !== state.map) {
+      // A different map is different ground, so the points go with the old
+      // one. Picking the map already in use keeps the shot as it is.
+      state.map = next;
+      loadPack(next);
+      state.gun = null;
+      state.target = null;
+      state.source = { gun: null, target: null };
+      state.arm = "gun";
+      state.gunLocked = false;
+      state.draft = {};
+      state.fieldError = { gun: "", target: "" };
+      state.undo = [];
+      state.view = homeView(state.size);
+      persist();
+    }
+    render();
+    var wpn = elWpnGrid.querySelector(".wcard.is-on") || elWpnGrid.querySelector(".wcard");
+    if (wpn) wpn.focus();
   });
   elWpnGrid.addEventListener("click", function (e) {
     var b = e.target.closest(".wcard");
     if (!b) return;
     state.weapon = b.getAttribute("data-id");
-    // With the map still downloading, the setup stays up as a loading screen
-    // and closes itself when the last tile lands.
-    state.setupOpen = !state.map || !packReady(state.map);
-    state.holding = state.setupOpen && !!state.map;
     persist();
-    requestRender();
+    if (state.map) closeSetup(false);
+    else requestRender();
   });
-  elLoadSkip.addEventListener("click", function () {
-    state.holding = false;
-    state.setupOpen = false;
-    requestRender();
-  });
+  elLoadRetry.addEventListener("click", retryPack);
+  elChipRetry.addEventListener("click", retryPack);
+  window.addEventListener("pagehide", function () { endEdit(); persist(); });
 
   /* ---- boot ---- */
   var sized = false;
@@ -2128,5 +2895,6 @@
   new ResizeObserver(measure).observe(elMap);
   measure();
   render();
+  if (state.setupOpen) focusSetup();
 })();
 </script>

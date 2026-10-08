@@ -2,10 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "wardog-range",
+      "name": "wardog-range-preview",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "4120", "--bind", "127.0.0.1"],
-      "port": 4120
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4121",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "port": 4121
     }
   ]
 }

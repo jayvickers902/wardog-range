@@ -499,6 +499,93 @@ check("levels paint coarsest first", () => {
   eq(order.slice().sort((a, b) => a - b), order);
 });
 
+/* ---- typed and pasted coordinates are refused, not rescued ------------- */
+
+const MAX_UNITS = 163.84;
+
+check("a typed axis takes whole numbers, decimals and a decimal comma", () => {
+  eq(Core.readAxis("98.43", MAX_UNITS), { value: 98.43, error: null });
+  eq(Core.readAxis(" 62,45 ", MAX_UNITS), { value: 62.45, error: null }, "comma and spaces");
+  eq(Core.readAxis("0", MAX_UNITS), { value: 0, error: null }, "zero");
+  eq(Core.readAxis(".5", MAX_UNITS), { value: 0.5, error: null }, "leading point");
+  eq(Core.readAxis("12.", MAX_UNITS), { value: 12, error: null }, "trailing point mid-typing");
+  eq(Core.readAxis("163.84", MAX_UNITS), { value: 163.84, error: null }, "far edge");
+});
+
+check("a typed axis is never cut down to a number it starts with", () => {
+  ["12abc", "1e2", "-1", "−5", "1,2,3", "12 34", "x98", "0x10", "."].forEach((s) => {
+    eq(Core.readAxis(s, MAX_UNITS), { value: null, error: "format" }, JSON.stringify(s));
+  });
+});
+
+check("a typed axis past the terrain edge is refused, not clamped to it", () => {
+  eq(Core.readAxis("9999", MAX_UNITS), { value: null, error: "range" });
+  eq(Core.readAxis("163.85", MAX_UNITS), { value: null, error: "range" });
+});
+
+check("an empty axis is missing, which is not the same as wrong", () => {
+  eq(Core.readAxis("", MAX_UNITS), { value: null, error: "empty" });
+  eq(Core.readAxis("   ", MAX_UNITS), { value: null, error: "empty" });
+  eq(Core.readAxis(undefined, MAX_UNITS), { value: null, error: "empty" });
+});
+
+check("a pasted pair must land inside the terrain square", () => {
+  eq(Core.boundedGamePoint("X 98.43, Y 62.45", 100, MAX_UNITS), { x: 9843, y: 6245 });
+  eq(Core.boundedGamePoint("y62,45 x98,43", 100, MAX_UNITS), { x: 9843, y: 6245 }, "reversed, decimal comma");
+  eq(Core.boundedGamePoint("x0 y163.84", 100, MAX_UNITS), { x: 0, y: 16384 }, "corners are inside");
+  isNull(Core.boundedGamePoint("x9999 y10", 100, MAX_UNITS), "far past the east edge");
+  isNull(Core.boundedGamePoint("x-1 y10", 100, MAX_UNITS), "west of the map");
+  isNull(Core.boundedGamePoint("x10 y163.85", 100, MAX_UNITS), "a hundredth past the north edge");
+  isNull(Core.boundedGamePoint("x10", 100, MAX_UNITS), "one axis");
+});
+
+/* ---- the bearing as printed --------------------------------------------- */
+
+check("a bearing a hair west of north prints as 0.0, never 360.0", () => {
+  eq(Core.bearingText(Core.solve({ x: 0, y: 0 }, { x: -0.01, y: 1000 })), "0.0");
+  eq(Core.bearingText({ range: 500, brg: 359.97 }), "0.0");
+  eq(Core.bearingText({ range: 500, brg: 359.94 }), "359.9");
+});
+
+check("the same point twice has no bearing to print", () => {
+  eq(Core.bearingText(Core.solve({ x: 9843, y: 6245 }, { x: 9843, y: 6245 })), "—");
+  eq(Core.bearingText(Core.solve({ x: 0, y: 0 }, { x: 0.3, y: 0 })), "—", "rounds to 0 m");
+  eq(Core.bearingText(Core.solve({ x: 0, y: 0 }, { x: 1, y: 0 })), "90.0", "one metre east");
+  eq(Core.bearingText(null), "—", "no solution");
+});
+
+/* ---- dragging a pin ------------------------------------------------------ */
+
+check("a dragged pin moves by the pointer's travel, wherever it was grabbed", () => {
+  const view = { cx: 8192, cy: 8192, span: 12000 }, size = { w: 1000, h: 1000 };
+  const pin = { x: 9843, y: 6245 };
+  const k = Core.scale(view, size);                 // 1/12 px per metre
+  const pinPx = Core.toScreen(pin, view, size);
+  // Grabbed at the dot, and grabbed 60 px out along the label.
+  [0, 60].forEach((grabDx) => {
+    const down = { x: pinPx.x + grabDx, y: pinPx.y };
+    const up = { x: down.x + 10, y: down.y };
+    const moved = Core.dragPoint(pin, Core.toWorld(down, view, size), Core.toWorld(up, view, size));
+    near(moved.x - pin.x, 10 / k, 1e-6, "east travel grabbed at +" + grabDx + " px");
+    near(moved.y, pin.y, 1e-6, "north unchanged grabbed at +" + grabDx + " px");
+  });
+});
+
+check("a drag that returns to where it started leaves the pin where it was", () => {
+  const pin = { x: 123.4, y: 5678.9 }, from = { x: 5000, y: 5000 };
+  eq(Core.dragPoint(pin, from, from), pin);
+});
+
+/* ---- saved target names -------------------------------------------------- */
+
+check("default saved names count on from the highest one left", () => {
+  eq(Core.nextSavedName([]), "Target 1");
+  eq(Core.nextSavedName(undefined), "Target 1");
+  eq(Core.nextSavedName([{ name: "Target 3" }, { name: "Target 1" }]), "Target 4", "after deleting Target 2");
+  eq(Core.nextSavedName([{ name: "Ridge MG" }, { name: "Target 2" }]), "Target 3", "renamed rows ignored");
+  eq(Core.nextSavedName([{ name: "Ridge MG" }]), "Target 1");
+});
+
 /* ------------------------------------------------------------------------ */
 
 function pick(p) { return p ? { x: p.x, y: p.y } : null; }
