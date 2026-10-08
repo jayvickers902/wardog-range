@@ -4,7 +4,7 @@ Serves this directory on 127.0.0.1:<port>, so Caddy can expose it at
 http://wardog-range.localhost/. The Cloudflare tunnel `wardogs` forwards
 https://wardogs.dudgy.net/ here too, so whatever is in this directory is the
 public site -- rebuilding index.html publishes it (README, "Serving").
-Port comes from C:\\projects\\homepanel\\ports.toml (`ports get wardog-range`)
+Port comes from the ports registry (`ports get wardog-range`)
 -- do not hardcode a different one.
 
 Serves index.html, which is generated: run `python build.py` first.
