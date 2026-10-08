@@ -62,20 +62,18 @@ LEVELS = (8, 16)
 DETAIL = {32: 3500, 64: 1500}
 
 # Where the fine levels are centred, in world metres from the southwest corner:
-# the control zones in the page's GROUND table. Bakurani's zone has not been
-# captured yet, so it is centred on the middle of its three bases instead --
-# the same point lands within about 170 m of the zone on the other two maps.
+# the control zones in the page's GROUND table.
 CENTRES = {
-    "bakurani": (8146, 6032),
+    "bakurani": (8097, 6988),
     "ozeti": (9778, 6245),
     "zestafona": (6966, 10058),
 }
 
 # Not in the repo. Point these wherever the exports actually live.
 SOURCES = {
-    "bakurani": "C:/Users/jayvi/Downloads/bakurani_map.png",
-    "ozeti": "C:/Users/jayvi/Downloads/ozeti_map.png",
-    "zestafona": "C:/Users/jayvi/Downloads/zesty_map.png",
+    "bakurani": "/mnt/c/Users/jayvi/Downloads/bakurani_map.png",
+    "ozeti": "/mnt/c/Users/jayvi/Downloads/ozeti_map.png",
+    "zestafona": "/mnt/c/Users/jayvi/Downloads/zesty_map.png",
 }
 
 
