@@ -2,6 +2,35 @@
 
 Reviewed 19 September 2026 for the distance-map implementation.
 
+## Current status, 21 September 2026
+
+The dated sections below are kept as they were written. Where they name
+`MAP_DEFS`, `calibration` or `playableExtent`, those were the earlier page's
+fields. The same record now lives in `MAPS` in `src/page.html`: `note` is the
+status on the setup card and in the placement line under the readout, `exact`
+says whether the placement was measured on both axes, `play` is the checked
+playable boundary, and `style` is the tone curve. The zone and bases are in
+`GROUND`.
+
+| Map | Placement against the game's map | Evidence | Playable bounds |
+| --- | --- | --- | --- |
+| Ozeti | aligned, 20 m RMS | overview capture, both axes | measured |
+| Zestafona | aligned, 28 m RMS | overview capture, both axes, 8 of 9 tiles agree | not measured |
+| Bakurani | aligned, 23 m RMS | overview capture, both axes, 9 of 9 tiles agree | measured |
+
+These figures are how far our imagery sits from the game's own map. They are
+not a radius around a shot. A point typed or pasted from Mark Coordinates never
+touches the imagery, so it carries none of this error, though it is only as
+good as the mark made in game. What remains open is Zestafona's playable
+boundary, which its capture and the published figure disagree on by up to 320
+m.
+
+Detail above the 6.4 m overview now exists as tiles (README, "Tiles above the
+overview"): 4 m and 2 m across each map, and 1 m and 0.5 m around the control
+zone where they have been cut. They were cut from the same renders under the
+same placement, so they sharpen what is drawn without changing the figures
+above. The registrations above were all measured against the overview.
+
 ## Supported coordinate behavior
 
 [Jupliket's in-game coordinate guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3800319041) documents right-clicking the map, choosing Mark Coordinates, copying the displayed pair, and calculating distance as `100 * hypot(deltaX, deltaY)`. It recommends zooming in before marking a point.
@@ -40,7 +69,7 @@ These offsets must not be copied onto the local `maps/*.webp` files solely becau
 - The 100 m/unit convention is corroborated by the guide and all three community definitions.
 - Full-raster dimensions, playable bounds, and a map's screen appearance are separate properties. Do not conflate them when calculating range or fitting the camera.
 - The existing local 16,384 m image extent implies 6.4 m per source pixel for a 2,560-pixel raster. It is an inherited placement assumption, not a measured calibration result.
-- At the time of the original review no live-game capture had been supplied. One has since been checked for Ozeti; see the section above. Bakurani and Zestafona are still in the state this paragraph describes.
+- At the time of the original review no live-game capture had been supplied. Captures have since been checked for all three maps, and all three are aligned. See **Current status** at the top.
 - Image-search results included unrelated games and were rejected. They must not be used as Wardogs visual references.
 - Community landmark coordinates can be comparison candidates but must not be labeled verified in-game control points without matching evidence.
 
@@ -232,16 +261,18 @@ that cannot be matched.
 
 ### What this does not cover
 
-- **Bakurani and Zestafona remain unverified.** The three rasters were reduced
-  from separate sources; one being right says nothing about the others. Their
-  `calibration` stays `unverified` and the app says so under the board.
+- **Bakurani and Zestafona were not covered by this check.** The three rasters
+  were reduced from separate sources; one being right says nothing about the
+  others. Each has since had its own capture checked; see **Current status**.
 - Ozeti was checked across its playable area. Terrain outside that boundary is
   drawn from the same raster under the same transform, but was not separately
   measured.
 - 20 m RMS is the agreement between our raster and the game's *map*. It is not
   a claim about the game's map against the game's *world*.
-- Resolution is unchanged. 6.4 m per source pixel still cannot show a building,
-  and a result rounded to the metre still does not imply metre placement.
+- Resolution was unchanged by this check. 6.4 m per source pixel cannot show a
+  building, and a result rounded to the metre still does not imply metre
+  placement. Finer detail tiles have since been added; they sharpen the picture
+  but not the placement (**Current status**).
 
 ## Control zone and faction bases, 20 September 2026
 
@@ -313,6 +344,72 @@ settle it, or two Mark Coordinates lines, one at its centre and one on its edge.
 As a final check, the shipped coordinates were drawn back onto all three
 captures through their tick calibration. Every square and circle lands on the
 shape the game drew.
+
+## Bakurani verified, 21 September 2026
+
+A second Bakurani overview, fully zoomed out, has tick marks on **both** axes:
+0 to 16 along the bottom and 1 to 16 up the left, 53.48 px/km on each. Both
+anchors are measured, which is what the first capture could not offer.
+
+    python tools/register-overview.py <capture> bakurani \
+        --x-band 924 936 --y-band 94 106 --x-km 0 --y-km 16 \
+        --playable 233.11 227.06 823.05 817.96
+
+The capture is 1065 x 1004, so the default tick bands do not fit it. A left
+band starting at column 92 also catches the mouse pointer above the axis and
+reads it as a seventeenth tick, which would put every anchor a kilometre out.
+
+Nine ~3.5 km tiles: **all nine within 7 m of the median**, median offset
+**+10 m east and -20 m north**, spread 4 m and 2 m, SNR 6.9 to 26.3, **RMS
+23 m**. One capture pixel is 18.7 m. The east offsets run from +5 m in the
+west column to +16 m in the east, about 0.15% over 7 km and under a pixel.
+Against Ozeti and Zestafona the same capture scatters, 0 of 9 each.
+
+So the render was never 110 m out. That figure came from reading the first
+capture's label glyphs without ticks -- the bias recorded at the time -- and
+the north anchor that capture could not measure is 20 m. Nothing was moved:
+as on Ozeti, whose northward residual is the same size, an offset under one
+capture pixel is not corrected.
+
+### Playable bounds
+
+Read as the centre of the boundary's dark stroke on each side, the playable
+area measures X 23.11 to 133.42, Y 19.50 to 129.98. Against the Apollyon
+figures (23.35 to 133.60, 19.34 to 129.65) the edges differ by -24, -18, +16
+and +33 m, under two capture pixels. As on Ozeti, `play` stores the Apollyon
+numbers with this as corroboration, and the board now frames Bakurani on them.
+
+### Zone
+
+Fitted to the outline as the others were, with the icons on it rejected:
+centre **x80.97 y69.88**, radius **495 m**, from 474 of 577 outline points over
+about 240 degrees of arc, 0.35 px RMS. It is good to about a pixel, 19 m, and
+the caveat on Zestafona's applies: the overview method read Ozeti's radius 14 m
+small.
+
+Bakurani's 1 m tiles had been cut around the middle of its three bases, 960 m
+south of the zone, and reached only about 2.2 km past its northern edge. They
+were recut the same day on this centre (`CENTRES` in `tools/cut-tiles.py`),
+tiles 8-22 x 11-25.
+
+### Bases
+
+This capture shows all three, so Bakurani's are no longer Apollyon's alone.
+The colour centroid used on the other two maps is pulled by the faction icon,
+which sits well off-centre in two of these squares -- 180 m out for Manticore
+and 107 m for Lonestar. Fitting each of the square's four sides instead, as a
+median along the side so the icon and label drop out:
+
+| Base | Apollyon minus capture |
+| --- | --- |
+| Manticore | +10 m E, +24 m N |
+| Valkyra | +12 m E, +33 m N |
+| Lonestar | +66 m E, -57 m N |
+
+Worst 88 m, under five capture pixels, in line with the 76 m on the other two
+maps. The corners ship unchanged. Drawn back onto the capture through its
+ticks, the zone, the boundary, Manticore and Valkyra land on the shapes the
+game drew; Lonestar sits about three pixels east of its square.
 
 ## Calibration completion procedure
 

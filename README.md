@@ -57,49 +57,101 @@ you pick a map is the moment it matters.
 one covers. It is dimmed until a map is picked, and picking a weapon closes the
 overlay. So the common path is two clicks and no confirm button.
 
-Picking a map clears both points and reframes the view. That is destructive on
-purpose: it doubles as "start over on this map". **CHANGE** in the header
-reopens the overlay with the current picks still highlighted.
+**CHANGE** in the header reopens the overlay as a proper modal dialog: focus
+moves onto the current map, Tab stays inside it, the board behind it is inert,
+and **CANCEL** or Escape puts back exactly what was there, shot included, and
+returns focus to CHANGE. The first visit has no CANCEL because there is no board
+to go back to yet. Picking a different map clears both points and reframes the
+view, since the old points belong to other ground. Picking the map already in
+use keeps the shot, so changing only the weapon never loses it. Starting over
+is its own button, **CLEAR BOTH POINTS**.
 
 ### Placing the two points
 
-One endpoint is armed at a time, and the chip marked **SET ON MAP** beside each
-one says which. It starts on the gun and moves itself to the target the first
-time the gun is placed by clicking -- so the opening sequence really is click,
-click, read. It does not move itself when the gun is set by dragging, typing or
-pasting, because in those cases you said where you wanted it deliberately and
-were probably about to correct it.
+One endpoint is armed at a time. The chip marked **SET ON MAP** beside each
+one is lit on the armed one, the armed pin wears a halo, and the status line on
+the map says it in words: `NEXT CLICK SETS TARGET`. It starts on the gun and
+moves itself to the target once the gun is placed by clicking, pasting or
+typing -- so the opening sequence really is click, click, read, and a gun set
+from exact coordinates is never the thing the next click moves. Dragging the
+gun leaves the armed endpoint alone, because a drag is usually a correction
+under way. A page that opens with a gun already down starts on the target.
+
+**LOCK** beside the gun keeps it where it is while targets come and go: clicks
+always set the target, the gun pin cannot be dragged, and its fields and paste
+box stop taking input until it is unlocked.
 
 Click empty ground to place the armed endpoint. Drag a pin to move it. Drag
-empty ground to pan and scroll to zoom about the cursor; double-click frames
-the map again. A click that shifts more than three pixels is a pan and not a
-placement, so a slightly unsteady click still lands where you meant.
+empty ground to pan and scroll to zoom about the cursor. A click that shifts
+more than three pixels is a pan and not a placement, so a slightly unsteady
+click still lands where you meant; so is one released more than three pixels
+from where it went down, even if no movement was reported in between.
+
+A drag is a preview until it is let go. The pin keeps the offset it was grabbed
+at, so taking it by the far end of its label moves it by exactly the distance
+the pointer travels and never snaps it to the pointer. Nothing is stored
+mid-drag. Escape, or the browser cancelling the pointer, puts the pin back
+where it was picked up. Only one pointer counts at a time: a second finger or
+button is ignored until the first lets go.
+
+The camera has its own buttons in the corner: **−** and **+** zoom about the
+middle, and **FIT SHOT** frames both points, or the playable map when there
+are none yet. The keys are `-`, `+` and `F`. None of them can move a point.
+Double-clicking used to frame the map, and a double-click now lands as one
+placement: the second click, on the same spot within half a second, is
+dropped rather than putting the target on top of the gun.
+
+**UNDO**, or Ctrl+Z anywhere but inside a text field, takes back the last
+change to the points or the saved list, one whole action at a time: a
+placement, a drag, a paste, a field edit however many keys it took, a nudge
+session, a save, a rename, a delete, or a clear. Inside a field, Ctrl+Z still
+undoes the typing.
 
 **+ SAVE TARGET** files the current target under the map it was measured on,
-newest first, eight at a time. A saved row shows its coordinates and its range
-from wherever the gun is standing *now*, recomputed live and coloured by the
-same verdict -- so moving the gun re-answers every saved target at once,
-without loading any of them. Clicking a row loads it as the target.
-**NEW MEASUREMENT** clears the target and leaves the gun where it is.
+newest first, eight at a time, and puts a name box on the new row straight
+away: type a name and press Enter, or just press Enter to keep `Target N`,
+which counts on from the highest one left so a deletion never repeats a name.
+The pencil on a row renames it later. A saved row shows its coordinates and
+its range from wherever the gun is standing *now*, recomputed live and
+coloured by the same verdict -- so moving the gun re-answers every saved
+target at once, without loading any of them. Clicking a row loads it as the
+target. Rows are updated in place, so a redraw never pulls keyboard focus off
+one. **NEW TARGET** clears the target and leaves the gun where it is.
 
 ### Typing coordinates instead
 
 Each endpoint has an **X** and a **Y** field in the game's own readout, fixed to
-two decimals. In game: zoom to the point, right-click, **Mark Coordinates [M]**,
-copy the chat line, paste it into the box under the target block. A paste that
-contains a readable pair lands immediately; Enter also commits. The border
-flashes green on a good parse and sticks red on a bad one.
+two decimals, and its own paste box. In game: zoom to the point, right-click,
+**Mark Coordinates [M]**, copy the chat line, and paste it into the box under
+the gun or the target. A paste that contains a readable pair lands immediately
+as one change; Enter also commits. Pasting the whole line into either the X or
+the Y box works too. The line under the fields confirms it in words --
+`Gun set: X 98.43 / Y 62.45 · pasted` -- and says why when it cannot: no pair
+found, or a pair that is off the map. The border flashes green on a good parse
+and sticks red on a bad one, but the words are what carry it.
+
+Typed numbers are read strictly. The whole field has to be one number from
+0.00 to 163.84, with a decimal comma allowed: `12abc` is not 12, and `9999` is
+refused rather than clamped to the map edge. A draft that is wrong or
+half-finished never moves the point in use. It stays in the field in red, with
+a line saying what is wrong and which point is still being used. A new endpoint
+exists only once both axes are valid, so typing X alone never invents a Y of
+zero. Pasted pairs get the same range check.
 
 The fields take arrow keys: up and down nudge by a metre, with Shift by ten.
-The nudge always steps from the committed value, never from half-typed text.
+The nudge always steps from the point in use, never from half-typed text.
+Escape puts the field, and the point, back to how they were before the typing
+started.
 
 A field holds an uncommitted draft while it is being edited, which is fiddlier
 than it sounds and is the reason the code looks the way it does. Binding the
 value straight to a two-decimal format makes the field untypable: type `1` and
 it reformats to `1.00` with the caret after it, so `103.83` can never be
-reached. Instead the keystrokes own the display and the point follows whatever
-parses, so the map moves as you type; blur or Enter drops the draft and the
-canonical format comes back.
+reached. Instead the keystrokes own the display, and the point follows the
+draft while both axes read as valid, so the map moves as you type. Leaving the
+endpoint's fields, or Enter, ends the edit: a valid draft gives way to the
+canonical format, and the whole edit becomes one step for UNDO. Moving from X to
+Y of the same endpoint is still the same edit.
 
 Pasted and typed numbers are always game units. A marked chat line is always in
 game units, and reading `x98.43` as 98 metres rather than 9,843 would be wrong
@@ -113,13 +165,26 @@ square you can play on, with the rest shaded back.
 
 A kilometre grid is drawn in gold, with 100 m minor lines once there is room
 for them, and the major lines are labelled along the top and down the left edge
-in the game's own readout numbers. The scale in the corner says how many metres
-a pixel is worth at the current zoom, and what to do about it.
+in the game's own readout numbers. The status line in the corner says how many
+metres a pixel is worth at the current zoom and which endpoint the next click
+sets.
 
 The coordinates under the pointer are printed in the header as you move, in the
 same readout numbers the game uses, so a spot on the board can be read off and
-then found in game. Off the map there is nothing to read, and the header falls
-back to the current map's calibration note.
+then found in game. Off the map there is nothing to read, and the header is
+left empty.
+
+The rail gives **range** and **bearing** the same size, since a shot needs
+both. Range takes the verdict colour, and bearing is in degrees, `0.0` rather
+than `360.0` just west of north, and `—` when the two points are the same. Under
+them come the verdict, the level-ground caveat, and a placement line that
+stays put while the pointer moves. That line names how each point was set, and
+the map's alignment figure when either was clicked or dragged. A clicked point
+carries the map image's placement error and a pasted one does not, so it
+suggests pasting game coordinates for precision. That figure is the map's
+registration, not a radius around the shot. The drive time sits last and
+quietest, labelled as a straight line at 40 km/h. Screen readers hear each
+committed result once, and never the pointer.
 
 Around the gun: a dashed ring at its minimum range, a brighter dashed ring at
 its maximum, and for the SPH-2 a third at 1070 m where the low arc starts. The
@@ -129,12 +194,11 @@ or red -- so the line itself says whether the shot is on.
 Under the gun's rings, each map carries the ground a player orients by: the
 **control zone** as a pale circle, and the three **faction bases** as squares
 in the game's own colours -- Manticore green, Valkyra red, Lonestar blue --
-each named above it and turned the way the game draws it. They are there so
-the board and the in-game map can be matched at a glance. The zone is drawn
-neutral because in game it takes the colour of whoever holds it. They are game
+each named above it and turned the way the game draws it. They are there so the
+board and the in-game map can be matched at a glance. The zone is drawn neutral
+because in game it takes the colour of whoever holds it. They are game
 coordinates drawn in world space like the pins, so they sit right against the
-grid even where the render beneath is only placed to ~110 m. Bakurani has its
-bases but no zone yet: no capture has shown it. The base squares come from the
+grid whatever the render beneath them does. The base squares come from the
 Apollyon calculator and were checked against our own captures; the zones were
 measured off those captures. `docs/MAP-REFERENCE-REVIEW.md` has both.
 
@@ -166,11 +230,13 @@ That boundary is also what the board frames. Ozeti's playable area is 8.5 by
 nobody can stand on. The dead ground is still drawn, shaded back, because a
 boundary with nothing outside it reads as the edge of the world.
 
-**Bakurani is partly checked.** A second overview identified it outright and
-confirmed its scale and orientation -- nine tiles, 12 m spread -- but that
-capture carries kilometre labels on one axis only, so its placement is good to
-about 110 m east and its north anchor was fitted rather than measured. The
-setup card says exactly that instead of claiming alignment.
+**Bakurani is verified** to 23 m RMS. Its first overview carried kilometre
+labels along one edge only, which left it placed to about 110 m with the north
+anchor fitted rather than measured. A second, with tick marks on both axes, put
+all nine tiles within 7 m of each other at +10 m east and -20 m north: the 110
+m was the reading of those labels, not the render, so nothing was moved. The
+same capture shows the playable boundary, which agrees with the published
+figure to 33 m, so Bakurani now draws it and opens framed on it like Ozeti.
 
 **Zestafona is verified** to 28 m RMS, from the best capture of the three --
 tick marks on both axes, so both anchors are measured rather than fitted. Its
@@ -181,8 +247,8 @@ playable boundary, because that measurement disagrees with the published figure
 by up to 320 m and this capture cannot settle which is right. A verified
 placement and settled bounds are separate claims.
 
-Bakurani and Zestafona are therefore framed whole, and shade nothing. Shading
-ground you can in fact play on is a worse fault than showing ground you cannot.
+Zestafona is therefore framed whole, and shades nothing. Shading ground you can
+in fact play on is a worse fault than showing ground you cannot.
 
 The three renders came from separate sources, so no map's result ever carries
 over to another. Each was checked on its own capture.
@@ -256,9 +322,8 @@ The two coarse levels cover the whole map. The two fine ones cover a square
 round the control zone, because that is the ground people zoom in on, and the
 whole map at 0.5 m would be about 4,000 tiles and a few hundred megabytes a
 map. 1 m reaches past an SPH-2's 2,660 m from the far edge of the zone; 0.5 m
-covers the zone and everywhere a mortar can hit it from. Bakurani's zone has
-not been captured yet, so its square is centred on the middle of its three
-bases, which lands within about 170 m of the zone on the other two maps.
+covers the zone and everywhere a mortar can hit it from. Each square is centred
+on the map's zone in `GROUND`.
 
 The fine levels are only cut where the export really has that much detail.
 Ozeti and Zestafona are exported at 0.5 m per pixel, Bakurani at 1 m, so
@@ -266,11 +331,11 @@ Bakurani stops at level 32 rather than being upsampled into a fake 0.5 m.
 
 | map | 8 | 16 | 32 | 64 | tiles | MB |
 |---|---|---|---|---|---:|---:|
-| Bakurani | whole | whole | 7.2 x 7.7 km | -- | 530 | 26.3 |
+| Bakurani | whole | whole | 7.7 x 7.7 km | -- | 545 | 27.2 |
 | Ozeti | whole | whole | 7.2 x 7.7 km | 3.3 x 3.3 km | 699 | 33.7 |
 | Zestafona | whole | whole | 7.7 x 7.7 km | 3.3 x 3.3 km | 714 | 20.2 |
 
-The fine levels add 39 MB to the 41 MB the coarse ones already were.
+The fine levels add 40 MB to the 41 MB the coarse ones already were.
 
 The board picks the coarsest level at least as sharp as the screen, counted in
 device pixels, and at each spot draws the finest level up to that one which
@@ -292,27 +357,35 @@ checks in the tests.
 
 Blurry patches are the board waiting on the network one square at a time, so
 it does not wait that way. The first time a map is picked, every tile it has
-is fetched at once -- while the player picks a weapon, and after that behind
-a progress bar in the setup screen, which closes itself when the last one
-lands:
+is fetched at once, starting while the player picks a weapon, with a progress
+bar in the setup screen:
 
 | map | download |
 |---|---:|
-| Bakurani | 26.3 MB |
+| Bakurani | 27.2 MB |
 | Ozeti | 33.7 MB |
 | Zestafona | 20.2 MB |
 
-Ozeti took about 15 s on a line throttled to 20 Mbit/s. **START ANYWAY** lets
-the player in early. The download carries on underneath, coarse levels first
-so the whole map has sharper ground under it soonest, and whatever is on
-screen and not yet downloaded is fetched directly.
+Ozeti took about 15 s on a line throttled to 20 Mbit/s. The board does not
+wait for it: picking the weapon opens the board at once, so coordinates can be
+pasted and points placed from the first second. The download carries on
+underneath, coarse levels first so the whole map has sharper ground under it
+soonest, and whatever is on screen and not yet downloaded is fetched directly.
+A chip under the map buttons says how far it has got and goes away when it is
+done. Anyone who would rather wait for full detail before zooming in can
+watch it reach the end.
+
+If any squares fail after their retries, the chip says how many out of how
+many, in orange, with a **RETRY** that asks again for only those. The setup
+screen shows the same state. A map is marked complete in the cache only once
+every square has arrived.
 
 The tiles are kept in the browser's Cache Storage, so the wait is once per map
 per browser. Every later visit reads them back off the disk in well under a
 second, without the progress bar, and every tile is in memory before it is
 ever on screen. A map picked on an earlier visit whose download never finished
-brings the bar back up when the page opens. Nothing is aimed at phones: the
-full map comes down whatever the screen.
+picks it up again behind the board, with the chip showing. Nothing is aimed at
+phones: the full map comes down whatever the screen.
 
 Every map URL carries `?v=<hash of every map file>`, which `build.py` works
 out on each build. A recut changes it, so the old Cache Storage copy is
@@ -351,9 +424,10 @@ not truth.
     L81 mortar   52-685 m level ground, high arc only
     SPH-2        745-2660 m level ground, low arc only from about 1070 m out
 
-The verdict beside the range is one of four: `TOO CLOSE` with how far short,
-`OUT OF RANGE` with how far over, `IN RANGE · HIGH ARC ONLY` inside the SPH-2's
-low-arc threshold, or plain `IN RANGE`.
+The verdict under the range is one of four: `TOO CLOSE` with how far short,
+`OUT OF RANGE` with how far over, `WITHIN LEVEL-GROUND RANGE · HIGH ARC ONLY`
+inside the SPH-2's low-arc threshold, or plain `WITHIN LEVEL-GROUND RANGE`. The
+wording says what the check establishes: the flat-ground band, not a hit.
 
 ### What this does not model
 
@@ -386,6 +460,13 @@ The control zone and faction bases, added on 20 September 2026, are not a
 return of the overlays. They are fixed per map, with no toggle, because they
 are what a player finds themselves by.
 
+The **−**, **+**, **FIT SHOT** and **UNDO** buttons over the map, added on 21
+September 2026, are a deliberate, minimal return of the cut zoom and fit
+controls (`docs/USABILITY-AND-AIMING-PLAN.md`). Double-click-to-frame, which
+had replaced them, overwrote an endpoint when it landed on empty ground, and
+nothing else made zoom or fit reachable from the keyboard. There is still no
+fullscreen button and no zoom slider.
+
 ## Layout
 
     src/page.html       source of truth -- body-only: markup, styles and behaviour
@@ -409,7 +490,12 @@ Edit `src/page.html`, then `python build.py`. Never edit `index.html`.
 `serve.py` is also the public site (see **Serving**), so a rebuilt
 `index.html` is live the moment it is written. `python build.py preview.html`
 writes a scratch copy beside it instead -- same maps, same relative paths --
-to try at `/preview.html` first. It is ignored by git and by Vercel.
+to try at `/preview.html` first. It is ignored by git and by Vercel, but it is
+still served, so it is reachable through the tunnel too. To keep a trial build
+off the public site entirely, build to a folder outside the repository
+(`python build.py C:/somewhere/site/index.html`), link `maps` beside it
+(`mklink /J C:\somewhere\site\maps C:\projects\wardog-range\maps`), and serve
+that folder on the registered `wardog-range-preview` port.
 
 The parsing, the distance model, the camera transforms, the weapon envelope,
 the drive time, the view fitting and the grid spacing live in
@@ -432,7 +518,15 @@ worked example to the last decimal, one hundredth of a unit being one metre,
 swapped endpoints giving the same distance, the camera transforms holding one
 scale on both axes of a rectangular viewport at every zoom and viewport shape,
 the weapon envelope at each of its boundaries, drive time, the view that frames
-a box across the shorter axis, and the grid spacing thresholds.
+a box across the shorter axis, and the grid spacing thresholds. They also pin
+down the interaction failures that were fixed, where they reduce to
+arithmetic: a typed axis refused rather than cut to a prefix or clamped to the
+edge, pasted pairs off the map refused, a 10 px pin drag moving 10 px worth
+of metres wherever the pin was grabbed, no bearing for coincident points,
+`0.0` rather than `360.0` at north, and default saved names that never repeat.
+
+The pointer, focus and dialog behaviour lives in the page and is checked in a
+browser against an isolated copy (see **Layout**), not by these tests.
 
 They do not cover where a click lands on the terrain image. That is a question
 for a live game, and it has its own tool:
@@ -442,7 +536,7 @@ for a live game, and it has its own tool:
 Give it a fully zoomed-out in-game map capture and it reports, in metres, where
 our render disagrees with the game -- tile by tile, so a scale error cannot
 hide behind a flattering average. It needs `numpy`, `scipy` and `pillow`, and
-it writes nothing back: copy the numbers into `MAP_DEFS` and the review doc
+it writes nothing back: copy the numbers into `MAPS` in `src/page.html` and the review doc
 yourself, with the date and the capture that produced them.
 
 ## Running it
@@ -487,6 +581,15 @@ DNS for `wardogs.dudgy.net` currently points at the Cloudflare tunnel
 `wardogs` (`0b182840-eec8-483a-aa63-9468ed818d2c`, config in
 `~/.cloudflared/wardogs-config.yml`), which forwards to `serve.py` on this
 machine. That means the site is down whenever this PC is off.
+
+Both halves run as Scheduled Tasks that restart a minute after a crash:
+`\WardogRange` runs `serve.py` through `tools/run-site.cmd`, and
+`\WardogsTunnel` runs cloudflared through `tools/run-tunnel.cmd`.
+`tools/install-boot-tasks.ps1 -Start` registers and starts them. Run from an
+elevated shell, they start at boot whether or not anyone signs in; from a
+normal one, Windows will not allow that, so they fall back to starting at
+sign-in and the script says so. Their output is appended to `serve.out.log`,
+`serve.err.log` and `tunnel.log` beside `serve.py`.
 
 A Vercel deployment of the same page already exists and is aliased to the same
 hostname. To hand the name back to Vercel -- always-on, global, no local

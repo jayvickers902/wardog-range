@@ -124,12 +124,12 @@ capture settled the grid convention: numeric axes, 1 km squares, y counting
 north upward, ticks on integer kilometre lines -- so the board's edge labels
 now use the game's own kilometre numbers instead of raw readout values.
 
-All three maps have since been checked against their own in-game capture:
-Ozeti to 20 m RMS, Zestafona to 28 m, Bakurani to about 110 m -- weaker only
-because its capture carries kilometre labels on one axis and no tick marks, so
-its north anchor was fitted rather than measured. Playable bounds are settled
-for Ozeti alone; Zestafona's reading disagrees with the published figure by up
-to 320 m and Bakurani's was never visible, so neither draws a boundary.
+All three maps have since been checked against their own in-game capture: Ozeti
+to 20 m RMS, Zestafona to 28 m, Bakurani to 23 m -- the last from a second
+capture with ticks on both axes, after a first with labels on one edge placed
+it only to about 110 m. Playable bounds are settled for Ozeti and Bakurani;
+Zestafona's reading disagrees with the published figure by up to 320 m, so it
+draws no boundary.
 
 Higher-resolution imagery is done. The board now carries 4 m and 2 m per pixel
 tile levels above the 2,560 px overview, cut from the full-size exports by
